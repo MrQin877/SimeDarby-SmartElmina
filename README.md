@@ -1,101 +1,154 @@
-# TownshipConnect · Smart Elmina
+# TownshipConnect — City of Elmina
 
-A map-first resident app for the Sime Darby hackathon. Built on the `draft-of-ui` branch with Expo SDK 54, React Native, TypeScript, free HeroUI Native, Uniwind and MapLibre. Brand accent: `#D93A34`.
+**TownshipConnect** is a mobile and web smart-township companion built for the **City of Elmina** (Sime Darby Property Hackathon). It brings together interactive township mobility, live road/CCTV exploration, turn-by-turn route previews, neighbourhood issue reporting, and community announcements in a clean, resident-first interface.
 
-## Start locally
+---
 
-Requires Node 20.19+ (Node 22 LTS recommended) and npm.
+## Features
 
-```sh
-npm ci
+- **Home Dashboard (`src/app/(tabs)/home.tsx`)**
+  - Quick destination search with voice input support
+  - Saved favourite places (`Home`, `Work`, `Park`, `Mall`) and saved routes
+  - Sample township traffic snapshot across key corridors (`Clear`, `Moderate`, `Heavy`)
+  - Latest official announcements and resident report status summary
+- **Interactive Township Map (`src/app/(tabs)/explore.tsx`)**
+  - Powered by **MapLibre** (`@maplibre/maplibre-react-native` on iOS/Android & `maplibre-gl` on Web)
+  - Filterable map layers: **Traffic**, **Transport** (proposed feeder bus stops & timetables), **Hazards**, and **CCTV** road cameras (`expo-video`)
+  - Tap anywhere on the map to drop a pin, bookmark places, or launch route planning
+- **Route Planning & Turn-by-Turn Journey (`src/app/route.tsx`, `src/app/journey.tsx`)**
+  - Calculates driving, cycling, and walking routes with step-by-step navigation instructions
+  - Interactive journey preview mode with distance and ETA updates
+- **Community Feed & Announcements (`src/app/(tabs)/community.tsx`, `src/app/announcement.tsx`)**
+  - Official Township Management updates filterable by category (`Road & Traffic`, `Safety`, `Environment`, `Community`)
+  - Resident reactions, comments, and direct **"View on map"** links for location-tagged notices
+- **Neighbourhood Issue Reporting (`src/app/report.tsx`, `src/app/reports.tsx`)**
+  - Submit local maintenance or hazard reports (`Road & traffic`, `Streetlights`, `Cleanliness`, `Facilities`, `Other`)
+  - Attach up to 3 photos (`expo-image-picker`) persisted locally on the device (`AsyncStorage` + `expo-file-system`)
+
+---
+
+## Tech Stack
+
+- **Framework**: [Expo SDK 54](https://docs.expo.dev/) & [React Native 0.81](https://reactnative.dev/) (New Architecture enabled)
+- **Navigation**: [Expo Router v6](https://docs.expo.dev/router/introduction/) (file-based routing in `src/app/`)
+- **UI & Styling**: [HeroUI Native](https://heroui.com/native), [Tailwind CSS v4](https://tailwindcss.com/) + [Uniwind](https://github.com/uniwind/uniwind), [Lucide Icons](https://lucide.dev/), and `DM Sans` typography
+- **Maps & Media**: `@maplibre/maplibre-react-native` (iOS/Android), `maplibre-gl` (Web), `expo-location`, `expo-video`, `expo-speech-recognition`, `expo-image-picker`
+
+---
+
+## Prerequisites
+
+Before running the project, make sure you have the following installed:
+
+### 1. Required for All Platforms
+- **Node.js**: `v20 LTS` or `v22+` (with `npm`)
+- **Git**
+
+### 2. Platform-Specific Requirements
+
+#### Running on Web (Fastest — no native SDKs required)
+- Any modern web browser (Chrome, Safari, Firefox, Edge)
+
+#### Running Locally on Android (`npm run android`)
+> **Note**: Because this app uses custom native modules (`@maplibre/maplibre-react-native`, `expo-speech-recognition`, `expo-video`), it requires an **Expo Development Build** and **cannot** be opened inside the standard Expo Go store app.
+
+- **Android Studio** with:
+  - **Android SDK Platform** (API 35 / Android 15 recommended) & **Android SDK Build-Tools**
+  - **Android Emulator** (or a physical Android phone with **USB Debugging** enabled)
+- **JDK 17 or JDK 21**
+  - *Automatic fallback included*: `npm run android` runs [`scripts/run-android.cjs`](scripts/run-android.cjs), which automatically detects a compatible JDK (`17`–`23`) or falls back to Android Studio's bundled JetBrains Runtime (`jbr`) if your system default Java is newer (e.g. Java 24–26).
+- `ANDROID_HOME` environment variable configured:
+  - **macOS**: `export ANDROID_HOME="$HOME/Library/Android/sdk"`
+  - **Windows**: `%LOCALAPPDATA%\Android\Sdk`
+
+#### Running Locally on iOS (`npm run ios` — macOS only)
+- **Xcode 16+** with **Xcode Command Line Tools** (`xcode-select --install`)
+- **CocoaPods** (`sudo gem install cocoapods` or `brew install cocoapods`)
+- **iOS Simulator** (installed via Xcode > Settings > Components)
+
+---
+
+## Getting Started & Running the Project
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Run on Android (Development Build)
+
+Start an Android Emulator (or plug in a physical Android device via USB) and run:
+
+```bash
+npm run android
+```
+
+- To target a specific physical device or emulator:
+  ```bash
+  npm run android -- --device
+  ```
+- **Daily development after the first build**: Once the `TownshipConnect` development app is installed on your emulator/device, you **do not** need to rebuild every time you edit TypeScript/React code. Simply start the Metro bundler:
+  ```bash
+  npm start
+  ```
+
+### 3. Run on iOS (macOS only)
+
+```bash
+npm run ios
+```
+
+### 4. Run on Web
+
+If you update `maplibre-gl`, sync the web worker once (`npm run sync:map-worker`), then start the web server:
+
+```bash
 npm run web
 ```
 
-The web build is a convenient interactive review of the same screens. Native builds use HeroUI Native; the web adapter uses matching React Native Web controls because HeroUI Native does not officially support web.
+---
 
-### iOS / Android
+## Alternative: Cloud Development Build with EAS (No Local Android Studio / Xcode Needed)
 
-MapLibre and speech recognition require a **development build**, not Expo Go.
+If a team member does not have Android Studio or Xcode installed locally, you can build the development `.apk` in the cloud using **EAS Build** (`eas.json` is preconfigured):
 
-```sh
-npm run ios       # requires Xcode, iOS runtime and CocoaPods
-npm run android   # requires Android SDK, JDK and emulator/device
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest build --platform android --profile development
 ```
 
-If Xcode is installed but Command Line Tools are selected, use:
+Once finished, download and install the `.apk` on your Android device or emulator via the EAS link/QR code, then run:
 
-```sh
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer npm run ios
+```bash
+npm start
 ```
 
-Alternatively, sign in to your own Expo account and create a development build with `npx eas-cli build --profile development --platform ios` (or `android`). After installing it, run `npm start`.
+---
 
-## What works
+## Useful Commands & Scripts
 
-- Three bottom tabs: **Home · Explore · Community**. Explore opens first.
-- A real, pannable/zoomable MapLibre map with a custom warm palette and OpenFreeMap tiles.
-- Traffic, proposed transport stops, hazards and CCTV markers. Contextual panels appear only after selection; tap any map location to drop a pin.
-- Dedicated destination search, microphone input (permission and device support required), and saved places.
-- Driving route previews from OSRM, with duration/distance estimates. The origin is the labelled demo starting point, not the user's GPS position.
-- **Demo journey mode** with turn instructions, map bearing changes, remaining time/distance and End. The bottom tabs disappear. “Preview next instruction” advances the simulation; this is not live GPS navigation.
-- Home quick actions, sample road overview, official announcement previews, profile and report access.
-- Announcement filters, reactions, comments, sharing and links to map locations. No resident post composer or direct messaging.
-- Issue reporting with validation, up to three image attachments and a persisted report list. Native attachments are copied into app-owned document storage.
-- Browser review and platform-specific native map integration.
+| Command | Description |
+| :--- | :--- |
+| `npm start` | Start the Expo development server (`expo start --dev-client`) |
+| `npm run android` | Auto-detect compatible JDK (17–21) and build/run Android development client |
+| `npm run ios` | Build and run iOS development client on Simulator |
+| `npm run web` | Start the web version in your browser (`expo start --web`) |
+| `npm run typecheck` | Run TypeScript compiler typechecking (`tsc --noEmit`) |
+| `npm run lint` | Run ESLint via `expo lint` |
+| `npm test` | Run unit tests (`tests/*.test.ts`) |
+| `npx expo prebuild --clean` | Regenerate native `android/` and `ios/` directories after changing `app.json` or native packages |
 
-## Demo data and service boundaries
+---
 
-This build deliberately starts without a backend account. Reports, comments, profile edits, bookmarks and reactions are saved **only on the device** using AsyncStorage. They are not sent to management or shared with other residents. On web, browser storage quotas can limit attached photos; storage failures are shown rather than silently hidden.
+## Troubleshooting
 
-Road geometry is real; traffic colours, camera/stop placements, incidents, road counts and announcements are **sample data**. There is no AI CCTV processing, verified incident feed, operating shuttle, push notification service or Supabase connection yet. No authentication or resident verification is implied by the demo profile.
-
-CCTV initially shows “Camera feed not connected”. Configure an authorised HTTPS HLS stream for sample Camera 01 to exercise the video player. The app does not fabricate live footage.
-
-Search currently covers the seeded township destinations. A production geocoder, production routing provider, continuous GPS navigation, rerouting and background location are separate integrations. The public OSRM demo endpoint provides route estimates without live traffic and is not a production SLA.
-
-## Configuration
-
-Copy `.env.example` to `.env.local` and restart Metro after editing.
-
-- `EXPO_PUBLIC_MAP_STYLE_URL`: optional MapLibre style URL. Leave unset for the bundled custom OpenFreeMap style.
-- `EXPO_PUBLIC_ROUTING_URL`: optional OSRM-compatible service origin. Defaults to `https://router.project-osrm.org`.
-- `EXPO_PUBLIC_CCTV_STREAM_URL`: optional authorised HTTPS stream for Camera 01.
-
-All `EXPO_PUBLIC_*` values are bundled into the client. **Do not put passwords, service-role keys or private camera credentials here.** A production CCTV service should issue short-lived authenticated stream URLs from a backend after verifying resident access.
-
-## Validation
-
-```sh
-npm run typecheck
-npm run lint
-npm test
-npx expo-doctor
-npx expo export --platform all
-```
-
-Unit tests cover report validation, corrupted local storage, reaction toggling, map filters, search and route-response parsing. A successful native JavaScript export does not replace an installed-device test.
-
-## Structure
-
-```text
-src/app/           Expo Router screens and three-tab layout
-src/components/    Shared UI, native HeroUI controls, map/video/voice adapters
-src/lib/           Theme, sample records, map style, routing and validation
-src/state/         Versioned local demo persistence
-assets/           Map style and sample traffic geometry
-public/           MapLibre web worker (same-origin deployment)
-tests/            Model and routing checks
-docs/             Design and integration notes
-```
-
-MapLibre GL JS 6 uses a module worker. The web adapter points to the vendored worker in `public/`; Expo's import-meta transform is enabled in `babel.config.js`. Update the worker along with `maplibre-gl` using `npm run sync:map-worker`.
-
-## Credits
-
-- Map data: © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), served via [OpenFreeMap](https://openfreemap.org/) / OpenMapTiles. Attribution remains on the map.
-- Custom palette adapted from [OpenFreeMap Liberty](https://tiles.openfreemap.org/styles/liberty), derived from the [OSM Liberty style](https://github.com/maputnik/osm-liberty).
-- Demo traffic geometry: OSRM driving route over OpenStreetMap data. Congestion colours are synthetic.
-- Reference coordinates: [Elmina Lakeside Mall](https://mapcarta.com/W1308938137) and [Elmina Valley Central Park](https://mapcarta.com/W866543394), based on OSM. Demo camera and shuttle locations are illustrative.
-- Map renderer: MapLibre React Native (MIT), MapLibre GL JS (BSD-3-Clause); see `docs/maplibre-license.txt` for the bundled web-worker licence.
-
-The generated design-board images from the planning chat are references, not production assets or real camera footage.
+- **`Unsupported class file major version 70` (or `68`/`69`) on Android**
+  - **Cause**: Your terminal's default Java is JDK 24–26, which Gradle `8.14` does not support yet.
+  - **Fix**: Run `npm run android` (which uses `scripts/run-android.cjs` to automatically select JDK 17/21 or Android Studio's bundled JDK), or manually set `JAVA_HOME`:
+    ```bash
+    export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+    export PATH="$JAVA_HOME/bin:$PATH"
+    ```
+- **Native dependency or `app.json` changes not taking effect**
+  - Run `npx expo prebuild --clean` followed by `npm run android` or `npm run ios`.
