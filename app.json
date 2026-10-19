@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "TownshipConnect",
+    "slug": "townshipconnect",
+    "scheme": "townshipconnect",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.smartelmina.townshipconnect"
+    },
+    "android": {
+      "package": "com.smartelmina.townshipconnect",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Select photos to attach to your neighbourhood report.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Show your location on the township map."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Use your microphone to search for a destination.",
+          "speechRecognitionPermission": "Turn your spoken destination into search text."
+        }
+      ],
+      "expo-video",
+      "./plugins/withPodMinimumIOS",
+      "./plugins/withSceneLifecycle"
+    ]
+  }
+}
