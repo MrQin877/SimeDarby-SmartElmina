@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import {
@@ -6,31 +7,40 @@ import {
   MessageSquarePlus,
   ClipboardList,
   Bookmark,
-  ArrowUpRight,
-  Construction,
-  TreePine,
+  Sun,
+  Bus,
+  Car,
+  Route,
+  QrCode,
+  ChevronRight,
 } from "lucide-react-native";
 import {
   Avatar,
   Badge,
   Card,
-  DemoNote,
   Description,
-  HeroCard,
-  IconButton,
   Page,
   PressableFeedback,
   Section,
   Surface,
   Typography,
 } from "../../components/Common";
+import { VisitorPassModal } from "../../components/VisitorPassModal";
 import { colors, fonts, radius, ui } from "../../lib/theme";
 import { useStore } from "../../state/store";
+import { initialAlerts } from "../../lib/data";
+
 export default function Home() {
   const { data } = useStore();
-  const latest = data.reports[0];
+  const [isVisitorPassOpen, setIsVisitorPassOpen] = useState(false);
+
+  const unreadAlertsCount = initialAlerts.filter(
+    (a) => !data.readAlerts.includes(a.id) && !a.isRead
+  ).length;
+
   return (
     <Page>
+      {/* Top Header: Resident Greeting + Alerts Bell */}
       <View style={ui.between}>
         <PressableFeedback
           accessibilityLabel="Open profile"
@@ -51,7 +61,7 @@ export default function Home() {
             </Avatar.Fallback>
           </Avatar>
           <View>
-            <Description style={ui.muted}>Good to see you,</Description>
+            <Description style={ui.muted}>Good morning,</Description>
             <Typography
               style={{
                 fontFamily: fonts.bold,
@@ -64,36 +74,154 @@ export default function Home() {
             </Typography>
           </View>
         </PressableFeedback>
-        <IconButton
-          icon={Bell}
-          label="View announcements"
-          onPress={() => router.push("/community")}
-        />
-      </View>
-      <View style={{ gap: 6 }}>
+
         <View style={[ui.row, { gap: 6 }]}>
-          <MapPin size={13} color={colors.red} />
-          <Typography style={[ui.label, { color: colors.red }]}>
-            CITY OF ELMINA
-          </Typography>
+          <PressableFeedback
+            onPress={() => router.push("/alerts")}
+            accessibilityLabel="View alerts"
+            style={s.alertBell}
+          >
+            <Bell size={20} color={colors.ink} strokeWidth={2} />
+            {unreadAlertsCount > 0 && (
+              <View style={s.badgeDot} />
+            )}
+          </PressableFeedback>
         </View>
-        <Typography.Heading type="h1" style={[ui.title, { fontSize: 32 }]}>
-          A better everyday.
+      </View>
+
+      {/* Township Context Banner */}
+      <View style={{ gap: 4 }}>
+        <View style={[ui.between, { alignItems: "center" }]}>
+          <View style={[ui.row, { gap: 5 }]}>
+            <MapPin size={13} color={colors.red} />
+            <Typography style={[ui.label, { color: colors.red }]}>
+              CITY OF ELMINA
+            </Typography>
+          </View>
+
+          <Surface
+            variant="secondary"
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: radius.sm,
+              backgroundColor: colors.surfaceSecondary,
+            }}
+          >
+            <Sun size={13} color={colors.amber} />
+            <Typography style={{ fontSize: 11, fontFamily: fonts.semibold, color: colors.ink }}>
+              Sunny 29°C
+            </Typography>
+          </Surface>
+        </View>
+
+        <Typography.Heading type="h1" style={[ui.title, { fontSize: 30 }]}>
+          Smart Elmina
         </Typography.Heading>
         <Description style={ui.muted}>
-          Your neighbourhood, a little more connected.
+          Smart mobility, road telemetry & connected resident services.
         </Description>
       </View>
+
+      {/* 1. Smart Services: 3 Core Mobility Shortcuts */}
+      <View style={{ gap: 8 }}>
+        <Typography style={ui.label}>SMART SERVICES</Typography>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          {/* Traffic Map */}
+          <PressableFeedback
+            onPress={() => router.push("/(tabs)/explore?sheet=traffic_details")}
+            style={{ flex: 1 }}
+          >
+            <Surface style={s.serviceCard}>
+              <Surface style={[s.serviceIcon, { backgroundColor: colors.redSoft }]}>
+                <Car size={20} color={colors.red} strokeWidth={2.2} />
+              </Surface>
+              <Typography style={s.serviceTitle}>
+                Traffic Map
+              </Typography>
+            </Surface>
+          </PressableFeedback>
+
+          {/* Plan Journey */}
+          <PressableFeedback
+            onPress={() => router.push("/(tabs)/explore?sheet=plan_journey")}
+            style={{ flex: 1 }}
+          >
+            <Surface style={s.serviceCard}>
+              <Surface style={[s.serviceIcon, { backgroundColor: colors.surfaceSecondary }]}>
+                <Route size={20} color={colors.ink} strokeWidth={2.2} />
+              </Surface>
+              <Typography style={s.serviceTitle}>
+                Plan Journey
+              </Typography>
+            </Surface>
+          </PressableFeedback>
+
+          {/* Bus & Shuttle */}
+          <PressableFeedback
+            onPress={() => router.push("/(tabs)/explore?sheet=shuttle")}
+            style={{ flex: 1 }}
+          >
+            <Surface style={s.serviceCard}>
+              <Surface style={[s.serviceIcon, { backgroundColor: colors.surfaceSecondary }]}>
+                <Bus size={20} color={colors.ink} strokeWidth={2.2} />
+              </Surface>
+              <Typography style={s.serviceTitle}>
+                Bus & Shuttle
+              </Typography>
+            </Surface>
+          </PressableFeedback>
+        </View>
+      </View>
+
+      {/* 2. Visitor Quick-Pass Action Card */}
+      <PressableFeedback onPress={() => setIsVisitorPassOpen(true)}>
+        <Surface style={s.visitorCard}>
+          <View style={[ui.row, { gap: 12, flex: 1 }]}>
+            <Surface
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: radius.md,
+                backgroundColor: colors.white,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <QrCode size={22} color={colors.red} />
+            </Surface>
+            <View style={{ flex: 1, gap: 2 }}>
+              <View style={[ui.row, { gap: 6 }]}>
+                <Typography style={{ fontSize: 14, fontFamily: fonts.bold, fontWeight: "700", color: colors.ink }}>
+                  Issue Visitor Quick-Pass
+                </Typography>
+                <Badge tone="red">Gate 3</Badge>
+              </View>
+              <Description style={ui.muted}>
+                Instant digital boom gate code with WhatsApp sharing
+              </Description>
+            </View>
+          </View>
+          <ChevronRight size={18} color={colors.muted} />
+        </Surface>
+      </PressableFeedback>
+
+      {/* 3. Civic Reporting Tools */}
       <View style={{ flexDirection: "row", gap: 10 }}>
         {(
           [
             {
               title: "Report issue",
               icon: MessageSquarePlus,
-              route: "/report",
+              route: "/report" as const,
             },
-            { title: "My reports", icon: ClipboardList, route: "/reports" },
-            { title: "Saved places", icon: Bookmark, route: "/saved" },
+            { title: "My reports", icon: ClipboardList, route: "/reports" as const },
+            { title: "Saved places", icon: Bookmark, route: "/saved" as const },
           ] as const
         ).map(({ title, icon: Icon, route }) => (
           <PressableFeedback
@@ -103,7 +231,7 @@ export default function Home() {
           >
             <Surface style={s.quickCard}>
               <Surface variant="secondary" style={s.quickIcon}>
-                <Icon size={20} color={colors.red} strokeWidth={2} />
+                <Icon size={18} color={colors.ink} strokeWidth={2} />
               </Surface>
               <Typography
                 style={{
@@ -120,169 +248,85 @@ export default function Home() {
           </PressableFeedback>
         ))}
       </View>
-      <Card>
+
+      {/* 4. Latest Community Updates (Matching prototype updates feed) */}
+      <View style={{ gap: 8 }}>
         <Section
-          title="Roads at a glance"
-          action="Explore"
-          onPress={() => router.push("/explore")}
+          title="Latest Community Updates"
+          action="See all (14)"
+          onPress={() => router.push("/(tabs)/community")}
         />
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          {[
-            {
-              n: "12",
-              label: "Clear",
-              color: colors.green,
-              bg: colors.greenSoft,
-            },
-            {
-              n: "2",
-              label: "Moderate",
-              color: colors.amber,
-              bg: colors.amberSoft,
-            },
-            {
-              n: "1",
-              label: "Hazard",
-              color: colors.red,
-              bg: colors.redSoft,
-            },
-          ].map((item) => (
-            <Surface
-              key={item.label}
-              style={{
-                backgroundColor: item.bg,
-                padding: 14,
-                borderRadius: radius.md,
-                flex: 1,
-                gap: 2,
-              }}
-            >
-              <Typography
-                style={{
-                  fontFamily: fonts.bold,
-                  fontSize: 26,
-                  fontWeight: "700",
-                  color: item.color,
-                  letterSpacing: -0.5,
-                }}
-              >
-                {item.n}
+
+        <View style={{ gap: 10 }}>
+          {/* Update 1 */}
+          <PressableFeedback
+            onPress={() => router.push("/(tabs)/community?tab=forum")}
+          >
+            <Card style={{ padding: 14, gap: 8 }}>
+              <View style={ui.between}>
+                <Badge tone="red">WEEKEND TOUR</Badge>
+                <Typography style={{ fontSize: 11, color: colors.muted }}>45 mins ago</Typography>
+              </View>
+              <Typography style={{ fontSize: 14, fontFamily: fonts.bold, fontWeight: "700", color: colors.ink, lineHeight: 20 }}>
+                Weekend Community Cycling Tour: Route preview across 90km twin cycle track
               </Typography>
-              <Typography
-                style={{
-                  fontFamily: fonts.semibold,
-                  color: item.color,
-                  fontSize: 11,
-                  fontWeight: "600",
-                }}
-              >
-                {item.label}
+              <Description style={ui.muted}>
+                Gathering at Rainbow Bridge this Saturday 7:00 AM • Families with cargo bikes welcome.
+              </Description>
+            </Card>
+          </PressableFeedback>
+
+          {/* Update 2 */}
+          <PressableFeedback
+            onPress={() => router.push("/announcement?id=ann-01")}
+          >
+            <Card style={{ padding: 14, gap: 8 }}>
+              <View style={ui.between}>
+                <Badge tone="amber">TRANSPORT ADVISORY</Badge>
+                <Typography style={{ fontSize: 11, color: colors.muted }}>Today, 7:30 AM</Typography>
+              </View>
+              <Typography style={{ fontSize: 14, fontFamily: fonts.bold, fontWeight: "700", color: colors.ink, lineHeight: 20 }}>
+                Persiaran Atmosfera Eastbound Closure & Feeder S1 Route Adjustment
               </Typography>
-            </Surface>
-          ))}
+              <Description style={ui.muted}>
+                Roadworks between Valley Gate and Central Park from Oct 24–28. Feeder Bus S1 rerouted to Lakeside Bay.
+              </Description>
+            </Card>
+          </PressableFeedback>
+
+          {/* Update 3 */}
+          <PressableFeedback
+            onPress={() => router.push("/(tabs)/community?tab=forum")}
+          >
+            <Card style={{ padding: 14, gap: 8 }}>
+              <View style={ui.between}>
+                <Badge tone="green">GARDENING CLUB</Badge>
+                <Typography style={{ fontSize: 11, color: colors.muted }}>5 hours ago</Typography>
+              </View>
+              <Typography style={{ fontSize: 14, fontFamily: fonts.bold, fontWeight: "700", color: colors.ink, lineHeight: 20 }}>
+                Elmina Lakeside Community Garden: Extra heirloom tomato & basil seedlings to share
+              </Typography>
+              <Description style={ui.muted}>
+                Welcome to pick up from Lot 4B plots • Organic monsoon cuttings.
+              </Description>
+            </Card>
+          </PressableFeedback>
         </View>
-        <DemoNote />
-      </Card>
-      <Section
-        title="Around your township"
-        action="View all"
-        onPress={() => router.push("/community")}
-      />
-      <PressableFeedback
-        onPress={() => router.push("/announcement?id=roadworks")}
-      >
-        <Surface style={s.feature}>
-          <View style={{ flex: 1, gap: 10 }}>
-            <Badge tone="red">OFFICIAL · SAMPLE</Badge>
-            <Typography.Heading
-              type="h2"
-              style={[ui.heading, { fontSize: 22, color: colors.white }]}
-            >
-              A smoother road{`\n`}starts here.
-            </Typography.Heading>
-            <Description
-              style={{
-                fontFamily: fonts.regular,
-                color: "#A1A1AA",
-                fontSize: 12,
-              }}
-            >
-              Upcoming road maintenance
-            </Description>
-            <View
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: radius.md,
-                backgroundColor: colors.red,
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: 2,
-              }}
-            >
-              <ArrowUpRight size={18} color={colors.white} />
-            </View>
-          </View>
-          <Construction size={74} strokeWidth={1.2} color="#3F3F46" />
-        </Surface>
-      </PressableFeedback>
-      <Section
-        title="Your latest report"
-        action="View all"
-        onPress={() => router.push("/reports")}
-      />
-      <Card>
-        {latest ? (
-          <>
-            <HeroCard.Header>
-              <Badge tone="amber">{latest.status}</Badge>
-            </HeroCard.Header>
-            <HeroCard.Body>
-              <HeroCard.Title style={ui.body}>
-                {latest.description}
-              </HeroCard.Title>
-              <HeroCard.Description style={ui.muted}>
-                {latest.location}
-              </HeroCard.Description>
-            </HeroCard.Body>
-          </>
-        ) : (
-          <View style={ui.row}>
-            <Surface
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: radius.md,
-                backgroundColor: colors.greenSoft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <TreePine size={22} color={colors.green} />
-            </Surface>
-            <View style={{ flex: 1 }}>
-              <HeroCard.Title
-                style={{
-                  fontFamily: fonts.semibold,
-                  fontWeight: "600",
-                  color: colors.ink,
-                }}
-              >
-                All quiet here
-              </HeroCard.Title>
-              <HeroCard.Description style={ui.muted}>
-                Your submitted reports will appear here.
-              </HeroCard.Description>
-            </View>
-          </View>
-        )}
-      </Card>
-      <Typography style={[ui.label, { textAlign: "center", fontSize: 9 }]}>
+      </View>
+
+      <Typography style={[ui.label, { textAlign: "center", fontSize: 9, marginTop: 10 }]}>
         SIME DARBY PROPERTY · TOWNSHIPCONNECT
       </Typography>
+
+      {/* Visitor Pass Modal */}
+      <VisitorPassModal
+        isOpen={isVisitorPassOpen}
+        onClose={() => setIsVisitorPassOpen(false)}
+      />
     </Page>
   );
 }
+
 const s = StyleSheet.create({
   avatar: {
     width: 44,
@@ -290,41 +334,78 @@ const s = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: colors.redSoft,
   },
-  quickCard: {
+  alertBell: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
     backgroundColor: colors.white,
-    borderRadius: radius.card,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    gap: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: "#09090B",
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  quickIcon: {
-    width: 42,
-    height: 42,
+  badgeDot: {
+    position: "absolute",
+    top: 9,
+    right: 9,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.red,
+  },
+  serviceCard: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: radius.card,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 100,
+  },
+  serviceIcon: {
+    width: 40,
+    height: 40,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.redSoft,
   },
-  feature: {
+  serviceTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.ink,
+    textAlign: "center",
+    lineHeight: 16,
+  },
+  visitorCard: {
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: radius.card,
-    padding: 22,
-    minHeight: 176,
+    padding: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: colors.ink,
-    shadowColor: "#09090B",
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.card,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceSecondary,
   },
 });

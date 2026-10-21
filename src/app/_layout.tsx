@@ -49,6 +49,7 @@ function Screens() {
         <Stack.Screen name="search" options={{ animation: "fade" }} />
         <Stack.Screen name="route" options={{ animation: "fade" }} />
         <Stack.Screen name="journey" options={{ animation: "fade" }} />
+        <Stack.Screen name="alerts" options={{ animation: "slide_from_right" }} />
       </Stack>
       <View pointerEvents="none">
         {storageError && (

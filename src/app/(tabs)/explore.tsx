@@ -13,6 +13,7 @@ import {
   LocateFixed,
   Bookmark,
   MapPin,
+  Compass,
 } from "lucide-react-native";
 import {
   CENTER,
@@ -39,7 +40,12 @@ import {
   Typography,
 } from "../../components/Common";
 import Action from "../../components/Action";
-import { colors, radius, ui } from "../../lib/theme";
+import {
+  TrafficDetailsContent,
+  PlanJourneyContent,
+  ShuttleContent,
+} from "../../components/MobilitySheets";
+import { colors, fonts, radius, ui } from "../../lib/theme";
 import { useStore } from "../../state/store";
 import { toggleItem } from "../../lib/model";
 const filterIcons = {
@@ -48,16 +54,49 @@ const filterIcons = {
   Hazards: TriangleAlert,
   CCTV: Video,
 };
+
+type SheetMode = "place" | "traffic_details" | "plan_journey" | "shuttle";
+
 export default function Explore() {
   const inset = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ place?: string }>();
+  const params = useLocalSearchParams<{ place?: string; sheet?: string }>();
   const { data, update } = useStore();
   const [filter, setFilter] = useState<MapFilter>("Traffic");
   const [selected, setSelected] = useState<Place | null>(null);
+  const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
   const [center, setCenter] = useState<Coordinate>(CENTER);
   const [user, setUser] = useState<Coordinate>();
   const [cameraKey, setCameraKey] = useState(0);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (params.sheet === "traffic_details") {
+      setSheetMode("traffic_details");
+      const b = places.find((p) => p.id === "bottleneck-gce");
+      if (b) {
+        setSelected(b);
+        setCenter(b.coordinate);
+        setFilter("Hazards");
+      }
+    } else if (params.sheet === "plan_journey") {
+      setSheetMode("plan_journey");
+      setSelected({
+        id: "journey-planner",
+        name: "Plan Your Journey",
+        subtitle: "Multi-modal options",
+        coordinate: CENTER,
+        kind: "place",
+      });
+    } else if (params.sheet === "shuttle") {
+      setSheetMode("shuttle");
+      const s = places.find((p) => p.id === "stop-1");
+      if (s) {
+        setSelected(s);
+        setCenter(s.coordinate);
+        setFilter("Transport");
+      }
+    }
+  }, [params.sheet]);
   useEffect(() => {
     if (!params.place) return;
     const p = places.find((p) => p.id === params.place);
@@ -78,6 +117,13 @@ export default function Explore() {
   const select = (p: Place) => {
     setSelected(p);
     setCenter(p.coordinate);
+    if (p.id === "bottleneck-gce") {
+      setSheetMode("traffic_details");
+    } else if (p.kind === "transport" || p.id === "stop-1" || p.id === "stop-2") {
+      setSheetMode("shuttle");
+    } else {
+      setSheetMode("place");
+    }
   };
   async function locate() {
     try {
@@ -216,8 +262,147 @@ export default function Explore() {
           </View>
         ) : null}
       </View>
-      {!selected && (
-        <View style={{ position: "absolute", bottom: 48, right: 18 }}>
+      {!selected && !sheetMode && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 24,
+            left: 16,
+            right: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingRight: 56 }}
+          >
+            <PressableFeedback
+              onPress={() => {
+                setSheetMode("traffic_details");
+                const b = places.find((p) => p.id === "bottleneck-gce");
+                if (b) {
+                  setSelected(b);
+                  setCenter(b.coordinate);
+                }
+              }}
+              style={{
+                backgroundColor: colors.white,
+                paddingHorizontal: 12,
+                paddingVertical: 9,
+                borderRadius: radius.card,
+                borderWidth: 1,
+                borderColor: colors.red,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                shadowColor: "#09090B",
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+                elevation: 3,
+              }}
+            >
+              <View
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 4,
+                  backgroundColor: colors.red,
+                }}
+              />
+              <Typography
+                style={{
+                  fontSize: 12,
+                  fontFamily: fonts.bold,
+                  fontWeight: "700",
+                  color: colors.red,
+                }}
+              >
+                GCE Delay (12m)
+              </Typography>
+            </PressableFeedback>
+
+            <PressableFeedback
+              onPress={() => {
+                setSheetMode("plan_journey");
+                setSelected({
+                  id: "journey-planner",
+                  name: "Plan Your Journey",
+                  subtitle: "Multi-modal options",
+                  coordinate: CENTER,
+                  kind: "place",
+                });
+              }}
+              style={{
+                backgroundColor: colors.white,
+                paddingHorizontal: 12,
+                paddingVertical: 9,
+                borderRadius: radius.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                shadowColor: "#09090B",
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+                elevation: 3,
+              }}
+            >
+              <Compass size={14} color={colors.ink} />
+              <Typography
+                style={{
+                  fontSize: 12,
+                  fontFamily: fonts.bold,
+                  fontWeight: "700",
+                  color: colors.ink,
+                }}
+              >
+                Plan Journey
+              </Typography>
+            </PressableFeedback>
+
+            <PressableFeedback
+              onPress={() => {
+                setSheetMode("shuttle");
+                const s = places.find((p) => p.id === "stop-1");
+                if (s) {
+                  setSelected(s);
+                  setCenter(s.coordinate);
+                }
+              }}
+              style={{
+                backgroundColor: colors.white,
+                paddingHorizontal: 12,
+                paddingVertical: 9,
+                borderRadius: radius.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                shadowColor: "#09090B",
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+                elevation: 3,
+              }}
+            >
+              <BusFront size={14} color={colors.ink} />
+              <Typography
+                style={{
+                  fontSize: 12,
+                  fontFamily: fonts.bold,
+                  fontWeight: "700",
+                  color: colors.ink,
+                }}
+              >
+                Bus S1 (6m)
+              </Typography>
+            </PressableFeedback>
+          </ScrollView>
+
           <IconButton
             icon={LocateFixed}
             label="Show my location"
@@ -227,145 +412,157 @@ export default function Explore() {
           />
         </View>
       )}
-      {!selected && filter === "Traffic" && (
-        <Surface style={[s.legend, ui.shadow]}>
-          {[
-            [colors.green, "Clear"],
-            [colors.amber, "Moderate"],
-            [colors.red, "Heavy"],
-          ].map(([color, label]) => (
-            <View key={label} style={[ui.row, { gap: 6 }]}>
-              <View
-                style={{
-                  height: 6,
-                  width: 14,
-                  borderRadius: 3,
-                  backgroundColor: color,
-                }}
-              />
-              <Typography
-                style={{ fontSize: 11, fontWeight: "600", color: colors.ink }}
-              >
-                {label}
-              </Typography>
-            </View>
-          ))}
-        </Surface>
-      )}
-      {selected && (
+
+      {(selected || sheetMode) && (
         <AnimatedSheet style={[s.sheet, ui.shadow]}>
           <View style={s.handle} />
+          <View style={[ui.between, { marginBottom: 6 }]}>
+            <Badge
+              tone={
+                sheetMode === "traffic_details"
+                  ? "red"
+                  : sheetMode === "shuttle"
+                    ? "red"
+                    : sheetMode === "plan_journey"
+                      ? "neutral"
+                      : selected?.kind === "hazard"
+                        ? "amber"
+                        : "green"
+              }
+            >
+              {sheetMode === "traffic_details"
+                ? "TRAFFIC ANALYSIS"
+                : sheetMode === "plan_journey"
+                  ? "COMMUTER MODE"
+                  : sheetMode === "shuttle"
+                    ? "COMMUNITY SHUTTLE"
+                    : selected?.kind === "camera"
+                      ? "ROAD CAMERA"
+                      : selected?.kind === "transport"
+                        ? "PROPOSED SERVICE"
+                        : selected?.kind === "hazard"
+                          ? "SAMPLE HAZARD"
+                          : "EXPLORE ELMINA"}
+            </Badge>
+            <CloseButton
+              accessibilityLabel="Close map details"
+              onPress={() => {
+                setSelected(null);
+                setSheetMode(null);
+                router.setParams({ place: "", sheet: "" });
+              }}
+            />
+          </View>
+
           <ScrollView
-            style={{ maxHeight: 350 }}
-            contentContainerStyle={{ gap: 12 }}
+            style={{ maxHeight: 420 }}
+            contentContainerStyle={{ gap: 12, paddingBottom: 16 }}
+            showsVerticalScrollIndicator={false}
           >
-            <View style={ui.between}>
-              <Badge tone={selected.kind === "hazard" ? "amber" : "green"}>
-                {selected.kind === "camera"
-                  ? "ROAD CAMERA"
-                  : selected.kind === "transport"
-                    ? "PROPOSED SERVICE"
-                    : selected.kind === "hazard"
-                      ? "SAMPLE HAZARD"
-                      : "EXPLORE ELMINA"}
-              </Badge>
-              <CloseButton
-                accessibilityLabel="Close map details"
-                onPress={() => {
+            {sheetMode === "traffic_details" ? (
+              <TrafficDetailsContent
+                onPlanJourney={() => setSheetMode("plan_journey")}
+                onClose={() => {
                   setSelected(null);
-                  router.setParams({ place: "" });
+                  setSheetMode(null);
+                  router.setParams({ place: "", sheet: "" });
                 }}
               />
-            </View>
-            <Typography.Heading type="h2" style={ui.heading}>
-              {selected.name}
-            </Typography.Heading>
-            <View style={[ui.row, { gap: 5 }]}>
-              <MapPin size={12} color={colors.muted} />
-              <Description style={ui.muted}>{selected.subtitle}</Description>
-            </View>
-            {selected.kind === "camera" ? (
-              <CameraFeed url={selected.streamUrl} />
-            ) : selected.kind === "transport" ? (
+            ) : sheetMode === "plan_journey" ? (
+              <PlanJourneyContent
+                onSelectOption={() => {}}
+                onClose={() => {
+                  setSelected(null);
+                  setSheetMode(null);
+                  router.setParams({ place: "", sheet: "" });
+                }}
+              />
+            ) : sheetMode === "shuttle" ? (
+              <ShuttleContent
+                onFocusBus={() => {
+                  setCenter([101.51425, 3.17901]);
+                  setCameraKey((k) => k + 1);
+                }}
+                onClose={() => {
+                  setSelected(null);
+                  setSheetMode(null);
+                  router.setParams({ place: "", sheet: "" });
+                }}
+              />
+            ) : selected?.kind === "camera" ? (
               <>
-                <Typography style={ui.body}>{selected.detail}</Typography>
-                <Surface
-                  variant="secondary"
-                  style={[
-                    ui.row,
-                    {
-                      padding: 14,
-                      backgroundColor: colors.surfaceSecondary,
-                      borderRadius: radius.card,
-                    },
-                  ]}
-                >
-                  <BusFront size={22} color={colors.green} />
-                  <View>
-                    <Typography
-                      style={{ fontWeight: "600", color: colors.ink }}
-                    >
-                      Weekday timetable · sample
-                    </Typography>
-                    <Description style={ui.muted}>
-                      08:00 · 09:00 · 10:00 · 11:00
-                    </Description>
-                  </View>
-                </Surface>
-                <DemoNote text="Not an operating service · no bookings available" />
+                <Typography.Heading type="h2" style={ui.heading}>
+                  {selected.name}
+                </Typography.Heading>
+                <View style={[ui.row, { gap: 5 }]}>
+                  <MapPin size={12} color={colors.muted} />
+                  <Description style={ui.muted}>{selected.subtitle}</Description>
+                </View>
+                <CameraFeed url={selected.streamUrl} />
               </>
-            ) : selected.kind === "hazard" ? (
+            ) : selected?.kind === "hazard" ? (
               <>
+                <Typography.Heading type="h2" style={ui.heading}>
+                  {selected.name}
+                </Typography.Heading>
+                <View style={[ui.row, { gap: 5 }]}>
+                  <MapPin size={12} color={colors.muted} />
+                  <Description style={ui.muted}>{selected.subtitle}</Description>
+                </View>
                 <Typography style={ui.body}>{selected.detail}</Typography>
                 <Action
-                  label="Report another issue"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/report",
-                      params: { location: selected.subtitle },
-                    })
-                  }
+                  label="Plan Alternative Journey"
+                  onPress={() => setSheetMode("plan_journey")}
                 />
               </>
-            ) : (
-              <View style={ui.row}>
-                <View style={{ flex: 1 }}>
-                  <Action
-                    label="Get directions"
-                    onPress={() =>
-                      router.push({
-                        pathname: "/route",
-                        params: {
-                          place: selected.id,
-                          name: selected.name,
-                          lng: String(selected.coordinate[0]),
-                          lat: String(selected.coordinate[1]),
-                        },
-                      })
-                    }
-                  />
+            ) : selected ? (
+              <>
+                <Typography.Heading type="h2" style={ui.heading}>
+                  {selected.name}
+                </Typography.Heading>
+                <View style={[ui.row, { gap: 5 }]}>
+                  <MapPin size={12} color={colors.muted} />
+                  <Description style={ui.muted}>{selected.subtitle}</Description>
                 </View>
-                {selected.id !== "dropped-pin" && (
-                  <IconButton
-                    icon={Bookmark}
-                    color={
-                      data.saved.includes(selected.id) ? colors.red : colors.ink
-                    }
-                    label={
-                      data.saved.includes(selected.id)
-                        ? "Unsave place"
-                        : "Save place"
-                    }
-                    onPress={() =>
-                      update((d) => ({
-                        ...d,
-                        saved: toggleItem(d.saved, selected.id),
-                      }))
-                    }
-                  />
-                )}
-              </View>
-            )}
+                <View style={ui.row}>
+                  <View style={{ flex: 1 }}>
+                    <Action
+                      label="Get directions"
+                      onPress={() =>
+                        router.push({
+                          pathname: "/route",
+                          params: {
+                            place: selected.id,
+                            name: selected.name,
+                            lng: String(selected.coordinate[0]),
+                            lat: String(selected.coordinate[1]),
+                          },
+                        })
+                      }
+                    />
+                  </View>
+                  {selected.id !== "dropped-pin" && (
+                    <IconButton
+                      icon={Bookmark}
+                      color={
+                        data.saved.includes(selected.id) ? colors.red : colors.ink
+                      }
+                      label={
+                        data.saved.includes(selected.id)
+                          ? "Unsave place"
+                          : "Save place"
+                      }
+                      onPress={() =>
+                        update((d) => ({
+                          ...d,
+                          saved: toggleItem(d.saved, selected.id),
+                        }))
+                      }
+                    />
+                  )}
+                </View>
+              </>
+            ) : null}
           </ScrollView>
         </AnimatedSheet>
       )}
