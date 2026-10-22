@@ -60,6 +60,7 @@ function text(node: any): string { if (typeof node === "string" || typeof node =
 test("real departure chip handlers update selection, countdown, and rendered arrival times", () => {
   const state: any[] = [];
   let reminderOpen = false;
+  let managedId: string | null = null;
   let editingData = { busReminders: [] as import("../src/lib/bus-reminders").BusReminder[] };
   const notices: string[] = [];
   let cursor = 0;
@@ -79,7 +80,7 @@ test("real departure chip handlers update selection, countdown, and rendered arr
   const source = ts.transpileModule(readFileSync(new URL("../src/components/MobilitySheets.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
   class Clock extends Date { static now() { return now; } }
   runInNewContext(source, { exports, Date: Clock, require(name: string) { assert.ok(name in dependencies, name); return dependencies[name]; } });
-  const render = () => { cursor = 0; return exports.ShuttleContent({ onFocusBus() {}, onClose() {}, reminderOpen, onReminderOpenChange(value: boolean) { reminderOpen = value; } }); };
+  const render = () => { cursor = 0; return exports.ShuttleContent({ onFocusBus() {}, onClose() {}, managedReminder: editingData.busReminders.find(r => r.id === managedId), onManageReminder(id: string | null) { managedId = id; }, onReminderSaved() {}, reminderOpen, onReminderOpenChange(value: boolean) { reminderOpen = value; } }); };
   const before = render();
   assert.ok(text(before).includes("5:00"));
   const chip = nodes(before).find(n => n.props.accessibilityLabel?.startsWith("Departure 08:50 AM"))!;
@@ -103,6 +104,9 @@ test("real departure chip handlers update selection, countdown, and rendered arr
   assert.equal(nodes(render()).find(n => n.type === "BusReminderForm")!.props.open, false);
   editingData = { busReminders: [{ id: "saved", routeId: "S1", stopId: "bus-stop-1", stopName: "Central Park", departureTime: "08:50 AM", scheduledTime: schedule.followingDepartures("S1", now)[1].at, leadMinutes: 15, active: true }] };
   let tree = render();
+  assert.ok(!text(tree).includes("Reminder set"), "the normal schedule does not contain a reminder card");
+  nodes(tree).find(n => text(n).trim() === "Manage Reminder" && typeof n.props.onPress === "function")!.props.onPress();
+  tree = render();
   nodes(tree).find(n => n.props.accessibilityLabel === "Edit reminder for Central Park")!.props.onPress();
   assert.equal(nodes(render()).find(n => n.type === "BusReminderForm")!.props.reminder.id, "saved");
   assert.equal(reminderOpen, true);

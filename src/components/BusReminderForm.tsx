@@ -8,8 +8,8 @@ import { createBusReminder, malaysiaDayStart, reminderDepartures, type BusRemind
 import { shuttleArrivals, shuttleDay, shuttleTime, type ShuttleRoute } from "../lib/shuttle-schedule";
 import { colors, ui } from "../lib/theme";
 
-type Props = { open: boolean; onOpenChange: (open: boolean) => void; routeId: ShuttleRoute; stopId?: string; stopName?: string; departureAt: number; reminder?: BusReminder };
-export default function BusReminderForm({ open, onOpenChange, routeId, stopId, stopName, departureAt, reminder }: Props) {
+type Props = { open: boolean; onOpenChange: (open: boolean) => void; routeId: ShuttleRoute; stopId?: string; stopName?: string; departureAt: number; reminder?: BusReminder; onSaved?: (id: string) => void };
+export default function BusReminderForm({ open, onOpenChange, routeId, stopId, stopName, departureAt, reminder, onSaved }: Props) {
   const { update } = useStore();
   const notify = useAppToast();
   const stops = shuttleArrivals(routeId, 0);
@@ -35,6 +35,7 @@ export default function BusReminderForm({ open, onOpenChange, routeId, stopId, s
       const nextReminder = createBusReminder(routeId, activeStopId, departure, lead, Date.now());
       update(d => ({ ...d, busReminders: [...d.busReminders.filter(r => r.id !== nextReminder.id && r.id !== reminder?.id), nextReminder] }));
       onOpenChange(false);
+      onSaved?.(nextReminder.id);
       notify(`Reminder scheduled for ${nextReminder.stopName} at ${shuttleTime(nextReminder.scheduledTime)}.`, "success");
     } catch (error) { notify(error instanceof Error ? error.message : "Unable to set this reminder.", "warning"); }
   };

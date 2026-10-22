@@ -6,6 +6,8 @@ import * as Location from "expo-location";
 import { Search, Mic, LocateFixed, Bookmark, MapPin, ArrowDownUp, Layers, Car, BusFront, Video, Check } from "lucide-react-native";
 import { CENTER, places, searchPlaces, roadCorridors, resolveRoadCorridor, type Coordinate, type Place } from "../../lib/data";
 import { canonicalShuttlePlace, elminaBusStops, liveBusLocation, liveBusPlace, shuttleMapPlaces, shuttleRouteCoordinates } from "../../lib/shuttle-data";
+import BusReminderPill from "../../components/BusReminderPill";
+import { activeBusReminder, type BusReminder } from "../../lib/bus-reminders";
 import TownshipMap from "../../components/TownshipMap";
 import DraggableSheet from "../../components/DraggableSheet";
 import MenuSheet from "../../components/MenuSheet";
@@ -43,6 +45,9 @@ export default function Explore() {
   const [mapHeight, setMapHeight] = useState(700);
   const [snapIndex, setSnapIndex] = useState(1);
   const [shuttleReminderOpen, setShuttleReminderOpen] = useState(false);
+  const [managedReminderId, setManagedReminderId] = useState<string | null>(null);
+  const managedReminder = data.busReminders.find(r => r.id === managedReminderId && !r.dismissedAt && r.scheduledTime > Date.now());
+  const floatingReminder = activeBusReminder(data.busReminders, Date.now());
   const sheetScroll = useRef<ScrollView>(null);
   const changeShuttleReminder = (open: boolean) => {
     setShuttleReminderOpen(open);
@@ -106,6 +111,7 @@ export default function Explore() {
   }, [params.sheet, params.place, params.arrived, params.mode, params.resume, params.lng, params.lat, params.name, notify]);
 
   const select = (target: Place) => {
+    setManagedReminderId(null);
     const place = canonicalShuttlePlace(target);
     setSelected(place); setCenter(place.coordinate); setSnapIndex(1); setEditing(null); setLayersOpen(false); setSearchOpen(false); Keyboard.dismiss();
     if (place.id === "bottleneck-gce") setCorridor(roadCorridors[0]);
@@ -120,6 +126,7 @@ export default function Explore() {
     setSheetMode("plan_journey"); setSnapIndex(1); setEditing(null); setRouteId(undefined); setTravelMode("drive");
   };
   const closeSheet = () => {
+    setManagedReminderId(null);
     setSelected(null); setSheetMode(null); setEditing(null);
     router.setParams({ place: "", sheet: "", arrived: "", mode: "", resume: "", lng: "", lat: "" });
   };
@@ -190,7 +197,15 @@ export default function Explore() {
   const cameraSelected = selected?.kind === "camera";
   const sheetTitle = routing
     ? `${travelMode === "drive" ? "Drive" : travelMode === "transit" ? "Transit" : "Walk"}${selectedOption ? ` · ${minutes(selectedOption.duration)} min` : ""}${destination ? ` · ${destination.name}` : ""}`
-    : sheetMode === "shuttle" && shuttleReminderOpen ? "Bus Arrival Reminder" : sheetMode === "traffic_details" ? corridor.name : selected?.name || (sheetMode === "shuttle" ? "Elmina Shuttle S1" : "Selected location");
+    : sheetMode === "shuttle" && managedReminder && !shuttleReminderOpen ? "Bus Reminder" : sheetMode === "shuttle" && shuttleReminderOpen ? "Bus Arrival Reminder" : sheetMode === "traffic_details" ? corridor.name : selected?.name || (sheetMode === "shuttle" ? "Elmina Shuttle S1" : "Selected location");
+
+  const openReminderManagement = (reminder: BusReminder) => {
+    const stop = elminaBusStops.find(item => item.id === reminder.stopId);
+    const feederPlace = places.find(item => item.id === (reminder.stopId === "t102-1" ? "elmina-green-1" : reminder.stopId === "t102-2" ? "atmosfera-stop" : "kwasa-hub"));
+    const target: Place = stop ?? { id: reminder.stopId, name: reminder.stopName, subtitle: "Feeder bus stop", kind: "transport", coordinate: feederPlace?.coordinate ?? CENTER };
+    setSelected(target); setCenter(target.coordinate); setSheetMode("shuttle"); setManagedReminderId(reminder.id); setShuttleReminderOpen(false); setSnapIndex(1); setLayersOpen(false);
+    sheetScroll.current?.scrollTo({ y: 0, animated: false });
+  };
 
   return <View onLayout={(event) => setMapHeight(event.nativeEvent.layout.height)} style={{ flex: 1, backgroundColor: colors.surfaceSecondary }}>
     <TownshipMap markers={markers} selectedId={selected?.id} center={journeyStep?.coordinate || center} userCoordinate={journeyStep?.coordinate || user} pitch={activeJourney ? 50 : 0} bearing={journeyStep?.bearing || 0} following={Boolean(activeJourney)} cameraKey={cameraKey} traffic={!activeJourney && !routing && (layer === "all" || layer === "traffic")}
@@ -235,7 +250,11 @@ export default function Explore() {
       <Surface style={{ alignSelf: "flex-start", marginHorizontal: 18, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "#FFFFFFF2" }}><DemoNote text={routing ? user ? "ROUTE ESTIMATES · NO LIVE TRAFFIC" : "DEMO STARTING POINT · ENABLE GPS WITH LOCATE" : showShuttle ? "DEMO BUS POSITION & TIMETABLE" : "DEMO OVERLAYS · NOT LIVE TRAFFIC"} /></Surface>
 
     </View>}
-    {!activeJourney && !searchOpen && <View style={{ position: "absolute", right: 18, bottom: sheetMode ? Math.min(sheetHeight + 12, Math.max(18, mapHeight - (routing ? 240 : 220))) : 22, zIndex: 2 }}><IconButton icon={LocateFixed} label="Show my location" onPress={() => { void locate(); }} /></View>}
+    {!activeJourney && !searchOpen && sheetMode && <View style={{ position: "absolute", right: 18, bottom: sheetMode ? Math.min(sheetHeight + 12, Math.max(18, mapHeight - (routing ? 240 : 220))) : 22, zIndex: 2 }}><IconButton icon={LocateFixed} label="Show my location" onPress={() => { void locate(); }} /></View>}
+    {!activeJourney && !searchOpen && <View pointerEvents={sheetMode ? "none" : "box-none"} accessibilityElementsHidden={Boolean(sheetMode)} importantForAccessibility={sheetMode ? "no-hide-descendants" : "auto"} style={{ position: "absolute", bottom: 12, left: 18, right: 18, flexDirection: "row", alignItems: "center", gap: 16, zIndex: 3 }}>
+      {floatingReminder ? <BusReminderPill reminder={floatingReminder} onPress={() => openReminderManagement(floatingReminder)} /> : <View pointerEvents="none" style={{ flex: 1 }} />}
+      <View style={{ flexShrink: 0 }}><IconButton icon={LocateFixed} label="Show my location" onPress={() => { void locate(); }} style={[ui.shadow, { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.white, borderWidth: 0 }]} /></View>
+    </View>}
     <DraggableSheet visible={!activeJourney && !searchOpen && Boolean(selected || sheetMode)} availableHeight={availableHeight} expandedHeight={expandedHeight} index={snapIndex} onSnap={setSnapIndex} snapPoints={snapPoints} compactHandle={routing && snapIndex === 0}>
       <View key="map-sheet-header" collapsable={false} collapsableChildren={false} style={[ui.between, { display: routing && snapIndex === 0 ? "none" : "flex", marginBottom: 8, gap: 10 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${sheetTitle}. ${snapIndex === 2 ? "Collapse" : "Expand"} details`} accessibilityState={{ expanded: snapIndex === 2 }} onPress={() => setSnapIndex(toggledSheetSnap(snapIndex))} style={{ flex: 1, minWidth: 0, minHeight: 36, justifyContent: "center" }}>
@@ -246,7 +265,7 @@ export default function Explore() {
       <ScrollView ref={sheetScroll} key="map-sheet-scroll" removeClippedSubviews={false} scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
         {sheetMode === "traffic_details" ? snapIndex === 0 ? <View style={{ gap: 6 }}><Typography style={ui.heading}>{corridor.delay} min delay</Typography><DemoNote text="Simulated congestion · expand for traffic analysis" /></View> : <TrafficDetailsContent corridor={corridor} onPlanJourney={() => enterRouting()} onClose={closeSheet} />
           : routing ? <PlanJourneyContent mode={travelMode} onModeChange={(mode) => { setTravelMode(mode); setRouteId(undefined); }} options={options} selectedId={selectedOption?.id} onSelect={setRouteId} onStart={startJourney} onExpand={() => setSnapIndex(2)} compact={snapIndex === 0} expanded={snapIndex === 2} destination={destination} stickyStart loading={loading} routeMessage={routeMessage} />
-          : sheetMode === "shuttle" ? <ShuttleContent reminderOpen={shuttleReminderOpen} onReminderOpenChange={changeShuttleReminder} compact={snapIndex === 0} stopName={selected?.name} stopId={selected?.id} onClose={closeSheet} onFocusBus={(route) => {
+          : sheetMode === "shuttle" ? <ShuttleContent managedReminder={managedReminder} onManageReminder={(id) => { setManagedReminderId(id); setSnapIndex(1); sheetScroll.current?.scrollTo({ y: 0, animated: false }); }} onReminderSaved={(id) => { if (managedReminderId) setManagedReminderId(id); else closeSheet(); }} reminderOpen={shuttleReminderOpen} onReminderOpenChange={changeShuttleReminder} compact={snapIndex === 0} stopName={selected?.name} stopId={selected?.id} onClose={closeSheet} onFocusBus={(route) => {
             const bus: Place = route === "S1" ? liveBusPlace : { id: "demo-shuttle-bus-t102", name: "Demo feeder bus T102", subtitle: "Simulated vehicle location", coordinate: [101.5099, 3.18133], kind: "transport" };
             setSelected(bus); setCenter(bus.coordinate); setSnapIndex(0); setCameraKey((key) => key + 1);
           }} />

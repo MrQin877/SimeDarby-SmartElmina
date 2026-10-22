@@ -3,15 +3,12 @@ import { Image, Platform, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { router, useLocalSearchParams } from "expo-router";
-import { Camera, Check } from "lucide-react-native";
+import { Camera } from "lucide-react-native";
 import {
-  Badge,
-  Card,
   CloseButton,
   DemoNote,
   Description,
   FilterChip,
-  HeroCard,
   Input,
   Label,
   Page,
@@ -37,7 +34,6 @@ export default function ReportScreen() {
   const notify = useAppToast();
   const setError = (message: string) => { setErrorState(message); if (message) notify(message, "error"); };
   const [busy, setBusy] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   async function pick() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -106,49 +102,14 @@ export default function ReportScreen() {
           ...d.reports,
         ],
       }));
-      setSubmitted(true);
+      notify("Report saved. You can track its status in My Reports.", "success");
+      router.navigate("/reports");
     } catch {
       setError("Your photos could not be saved. Please try again.");
     } finally {
       setBusy(false);
     }
   }
-  if (submitted)
-    return (
-      <Page title="Thank you, neighbour." back>
-        <View style={{ alignItems: "center", paddingVertical: 18 }}>
-          <Surface
-            style={{
-              backgroundColor: colors.greenSoft,
-              borderRadius: radius.lg,
-              padding: 22,
-            }}
-          >
-            <Check size={40} color={colors.green} />
-          </Surface>
-        </View>
-        <Card>
-          <HeroCard.Header>
-            <Badge tone="green">SAVED ON THIS DEVICE</Badge>
-          </HeroCard.Header>
-          <HeroCard.Body>
-            <HeroCard.Title style={ui.heading}>
-              Your demo report is ready.
-            </HeroCard.Title>
-            <HeroCard.Description style={ui.body}>
-              You can review it in My reports.
-            </HeroCard.Description>
-          </HeroCard.Body>
-          <HeroCard.Footer>
-            <DemoNote text="This demo has not sent the report to township management." />
-          </HeroCard.Footer>
-        </Card>
-        <Action
-          label="View my reports"
-          onPress={() => router.replace("/reports")}
-        />
-      </Page>
-    );
   return (
     <Page
       title="Report an issue"

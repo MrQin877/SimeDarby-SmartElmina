@@ -138,3 +138,13 @@ test("the reminder form defaults to the current stop/departure, cancels without 
   assert.doesNotThrow(render, "switching routes keeps the mounted hidden form safe");
   assert.ok(content(render()).includes("Elmina Green 1"));
 });
+
+test("the floating pill selects the earliest active reminder and disappears immediately on cancellation", () => {
+  const late = createBusReminder("S1", "bus-stop-3", departure, 15, now);
+  const early = createBusReminder("S1", "bus-stop-1", departure, 15, now);
+  assert.equal(reminders.activeBusReminder([late, early], now), early);
+  assert.equal(reminders.activeBusReminder([{ ...early, active: false, dismissedAt: now }], now), undefined);
+  assert.equal(reminders.activeBusReminder([early], early.scheduledTime + 1), undefined);
+  assert.equal(reminders.activeBusReminder([early], early.scheduledTime), early);
+  assert.equal(reminders.activeBusReminder([{ ...early, active: false, triggeredAt: now }], now), undefined);
+});

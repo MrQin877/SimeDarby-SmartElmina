@@ -1,3 +1,4 @@
+import { demoReports, restoreReports } from "./reports";
 import { restoreBusReminders, type BusReminder } from "./bus-reminders";
 import { restoreAvatarUri } from "./avatar";
 import { defaultRewardState, restoreRewards, type RewardState } from "./rewards";
@@ -76,6 +77,7 @@ export type VisitorPass = {
 export type LocalData = RewardState & {
   busReminders: BusReminder[];
   reports: Report[];
+  reportsDemoSeeded: boolean;
   comments: Comment[];
   liked: string[];
   saved: string[];
@@ -113,7 +115,8 @@ export type LocalData = RewardState & {
 export const initialData: LocalData = {
   ...defaultRewardState,
   busReminders: [],
-  reports: [],
+  reports: demoReports,
+  reportsDemoSeeded: true,
   comments: [],
   liked: [],
   saved: [],
@@ -174,14 +177,8 @@ export function restoreData(raw: string | null): LocalData {
     return {
       ...restoreRewards(d),
       busReminders: restoreBusReminders(d.busReminders),
-      reports: Array.isArray(d.reports)
-        ? d.reports.filter(
-            (r: Report) =>
-              typeof r?.id === "string" &&
-              typeof r.description === "string" &&
-              Array.isArray(r.photos),
-          )
-        : [],
+      reports: restoreReports(d.reports, d.reportsDemoSeeded === true),
+      reportsDemoSeeded: true,
       comments: Array.isArray(d.comments)
         ? d.comments.filter(
             (c: Comment) =>

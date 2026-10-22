@@ -614,18 +614,20 @@ export function Badge({
   tone = "neutral",
 }: {
   children: ReactNode;
-  tone?: "neutral" | "green" | "amber" | "red";
+  tone?: "neutral" | "green" | "amber" | "red" | "blue";
 }) {
   const bg = {
     neutral: colors.surfaceSecondary,
     green: colors.greenSoft,
     amber: colors.amberSoft,
+    blue: "#E0F2FE",
     red: colors.redSoft,
   }[tone];
   const fg = {
     neutral: colors.muted,
     green: colors.green,
     amber: colors.amber,
+    blue: "#0369A1",
     red: colors.red,
   }[tone];
   return (

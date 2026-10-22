@@ -58,3 +58,8 @@ export function restoreBusReminders(raw: unknown): BusReminder[] {
     return true;
   });
 }
+
+/** Earliest active arrival wins when several reminders are scheduled. */
+export function activeBusReminder(items: BusReminder[], now: number): BusReminder | undefined {
+  return items.filter(r => r.active && !r.dismissedAt && r.scheduledTime >= now).reduce<BusReminder | undefined>((earliest, r) => !earliest || r.scheduledTime < earliest.scheduledTime ? r : earliest, undefined);
+}

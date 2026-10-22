@@ -38,7 +38,7 @@ export default function Profile() {
     <Typography style={ui.label}>SUPPORT & LEGAL</Typography>
     <Surface style={[ui.card, { padding: 0, gap: 0, overflow: "hidden" }]}>
       <SettingsRow icon={HelpCircle} label="Help & Support" onPress={() => settings("support")} />
-      <SettingsRow icon={MessageSquare} label="Report Issue / Feedback" onPress={() => router.push("/report")} />
+      <SettingsRow icon={MessageSquare} label="Report Issue / Feedback" onPress={() => router.push("/reports")} />
       <SettingsRow icon={Info} label="About TownshipConnect" onPress={() => settings("about")} />
       <SettingsRow icon={ShieldCheck} label="Privacy Information" onPress={() => settings("privacy")} last />
     </Surface>
