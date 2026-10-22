@@ -14,6 +14,7 @@ import MapMarkerBadge from "./MapMarkerBadge";
 import { CENTER } from "../lib/data";
 import { lineFeature, mapStyle, trafficLines, roadLayerIds, routeBounds, type MapProps } from "../lib/map";
 import { runCameraCommand } from "../lib/native-camera";
+import { SHUTTLE_BLUE, liveBusLocation } from "../lib/shuttle-data";
 import { colors } from "../lib/theme";
 export default function TownshipMap({
   markers,
@@ -25,6 +26,8 @@ export default function TownshipMap({
   center = CENTER,
   traffic,
   route,
+  shuttleRoute,
+  zoomLevel,
   routeOptions,
   selectedRouteId,
   onRouteSelect,
@@ -48,16 +51,16 @@ export default function TownshipMap({
     // Wait for native layout after map initialization, including retries.
     const frame = requestAnimationFrame(() => {
       void runCameraCommand(() => active && camera.current === target, () => {
-        const coordinates = routeOptions?.flatMap((option) => lineFeature(option.coordinates, option.segments).features.flatMap((feature) => feature.geometry.coordinates)) || [];
+        const coordinates = routeOptions?.flatMap((option) => lineFeature(option.coordinates, option.segments).features.flatMap((feature) => feature.geometry.coordinates)) || (zoomLevel === undefined ? shuttleRoute : undefined) || [];
         if (coordinates.length > 1 && !following) {
           const [sw, ne] = routeBounds(coordinates as typeof center[]);
           return target.fitBounds([...sw, ...ne], { padding: { top: viewportPadding?.top || 180, bottom: viewportPadding?.bottom || 230, left: 40, right: 40 }, duration: 600 });
         }
-        return target.easeTo({ center, zoom: following ? 16 : route ? 15 : 14.4, bearing, pitch, padding: { top: viewportPadding?.top || 0, bottom: viewportPadding?.bottom || 0 }, duration: 600 });
+        return target.easeTo({ center, zoom: zoomLevel ?? (following ? 16 : route ? 15 : 14.4), bearing, pitch, padding: { top: viewportPadding?.top || 0, bottom: viewportPadding?.bottom || 0 }, duration: 600 });
       }, (error) => console.warn("Map camera update failed", error));
     });
     return () => { active = false; cancelAnimationFrame(frame); };
-  }, [loaded, retry, center, bearing, pitch, following, route, cameraKey, routeOptions, viewportPadding]);
+  }, [loaded, retry, center, bearing, pitch, following, route, cameraKey, routeOptions, viewportPadding, zoomLevel, shuttleRoute]);
   return (
     <View style={StyleSheet.absoluteFill}>
       <Map
@@ -105,6 +108,10 @@ export default function TownshipMap({
             />
           </GeoJSONSource>
         )}
+        {shuttleRoute && <GeoJSONSource id="shuttle-route-source" data={lineFeature(shuttleRoute)}>
+          <Layer id="shuttle-route-casing" type="line" paint={{ "line-color": colors.white, "line-width": 8 }} layout={{ "line-cap": "round", "line-join": "round" }} />
+          <Layer id="shuttle-route-line" type="line" paint={{ "line-color": SHUTTLE_BLUE, "line-width": 5 }} layout={{ "line-cap": "round", "line-join": "round" }} />
+        </GeoJSONSource>}
         {routeOptions?.filter((option) => lineFeature(option.coordinates, option.segments).features.length > 0).map((option) => <GeoJSONSource key={option.id} id={`option-${option.id}`} data={lineFeature(option.coordinates, option.segments)} hitbox={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={(event) => { event.stopPropagation(); onRouteSelect?.(option.id); }}>
           <Layer id={`option-casing-${option.id}`} type="line" paint={{ "line-color": colors.white, "line-width": option.id === selectedRouteId ? 11 : 8 }} />
           <Layer id={`option-line-${option.id}`} type="line" paint={{ "line-color": option.id === selectedRouteId ? colors.red : "#9CA3AF", "line-width": option.id === selectedRouteId ? 7 : 5 }} layout={{ "line-cap": "round", "line-join": "round" }} />
@@ -136,7 +143,7 @@ export default function TownshipMap({
               <Pressable
                 accessibilityLabel={place.name}
                 onPress={(event) => { event.stopPropagation(); interaction.current++; onSelect?.(place); }}
-                style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}
+                style={{ width: place.id === liveBusLocation.id ? 80 : 48, height: place.id === liveBusLocation.id ? 80 : 48, alignItems: "center", justifyContent: "center" }}
               >
                 <MapMarkerBadge place={place} selected={selected} />
               </Pressable>

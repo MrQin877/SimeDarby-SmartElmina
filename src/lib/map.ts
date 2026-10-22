@@ -14,6 +14,8 @@ export type MapProps = {
   center?: Coordinate;
   traffic?: boolean;
   route?: Coordinate[];
+  shuttleRoute?: Coordinate[];
+  zoomLevel?: number;
   routeOptions?: { id: string; coordinates: Coordinate[]; segments?: Coordinate[][] }[];
   selectedRouteId?: string;
   onRouteSelect?: (id: string) => void;

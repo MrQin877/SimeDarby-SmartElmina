@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { Search, Mic, LocateFixed, Bookmark, MapPin, ArrowDownUp, Layers, Car, BusFront, Video, Check } from "lucide-react-native";
 import { CENTER, places, searchPlaces, roadCorridors, resolveRoadCorridor, type Coordinate, type Place } from "../../lib/data";
+import { canonicalShuttlePlace, elminaBusStops, liveBusLocation, liveBusPlace, shuttleMapPlaces, shuttleRouteCoordinates } from "../../lib/shuttle-data";
 import TownshipMap from "../../components/TownshipMap";
 import DraggableSheet from "../../components/DraggableSheet";
 import MenuSheet from "../../components/MenuSheet";
@@ -79,7 +80,8 @@ export default function Explore() {
       router.setParams({ arrived: "" });
       setSheetMode(null); setSelected(null); return;
     }
-    const place = places.find((item) => item.id === params.place);
+    const rawPlace = [...places, ...elminaBusStops].find((item) => item.id === params.place);
+    const place = rawPlace ? canonicalShuttlePlace(rawPlace) : undefined;
     if (place) {
       setSelected(place); setCenter(place.coordinate); setSnapIndex(1);
       if (place.kind === "place") { setDestination(place); setDestinationText(place.name); }
@@ -90,12 +92,13 @@ export default function Explore() {
       const road = places.find((item) => item.id === "bottleneck-gce")!;
       setSelected(road); setCenter(road.coordinate); setCorridor(roadCorridors[0]); setSheetMode("traffic_details"); setSnapIndex(1);
     } else if (params.sheet === "shuttle") {
-      const stop = place?.kind === "transport" ? place : places.find((item) => item.id === "stop-1")!;
+      const stop = place?.kind === "transport" ? place : elminaBusStops[0];
       setSelected(stop); setCenter(stop.coordinate); setSheetMode("shuttle"); setSnapIndex(1);
     } else if (place) setSheetMode(modeForPlace(place));
   }, [params.sheet, params.place, params.arrived, params.mode, params.resume, params.lng, params.lat, params.name, notify]);
 
-  const select = (place: Place) => {
+  const select = (target: Place) => {
+    const place = canonicalShuttlePlace(target);
     setSelected(place); setCenter(place.coordinate); setSnapIndex(1); setEditing(null); setLayersOpen(false); setSearchOpen(false); Keyboard.dismiss();
     if (place.id === "bottleneck-gce") setCorridor(roadCorridors[0]);
     if (place.kind === "place") {
@@ -152,11 +155,13 @@ export default function Explore() {
     return () => subscription.remove();
   }, [searchOpen, activeJourney, sheetMode, finishJourney]);
   const journeyStep = activeJourney?.steps[journeyIndex];
+  const showShuttle = !activeJourney && !routing && (layer === "shuttle" || sheetMode === "shuttle");
   const markers = useMemo(() => {
     if (activeJourney) return [];
-    const visible = routing ? destination ? [destination] : [] : filterMapPlaces(places, layer);
+    const visible = routing ? destination ? [destination] : [] : filterMapPlaces(shuttleMapPlaces(places), sheetMode === "shuttle" ? "shuttle" : layer);
+    if (showShuttle) visible.push(liveBusPlace);
     return selected && markerKind(selected) !== "traffic" && !visible.some((place) => place.id === selected.id) ? [...visible, selected] : visible;
-  }, [selected, destination, routing, layer, activeJourney]);
+  }, [selected, destination, routing, layer, sheetMode, showShuttle, activeJourney]);
   const routeOverlays = useMemo(() => {
     if (activeJourney) return [{ id: "active-journey", coordinates: activeJourney.coordinates, segments: (activeJourney as RouteOption).segments }];
     if (!routing) return undefined;
@@ -180,6 +185,7 @@ export default function Explore() {
 
   return <View onLayout={(event) => setMapHeight(event.nativeEvent.layout.height)} style={{ flex: 1, backgroundColor: colors.surfaceSecondary }}>
     <TownshipMap markers={markers} selectedId={selected?.id} center={journeyStep?.coordinate || center} userCoordinate={journeyStep?.coordinate || user} pitch={activeJourney ? 50 : 0} bearing={journeyStep?.bearing || 0} following={Boolean(activeJourney)} cameraKey={cameraKey} traffic={!activeJourney && !routing && (layer === "all" || layer === "traffic")}
+      shuttleRoute={showShuttle ? shuttleRouteCoordinates : undefined} zoomLevel={selected?.id === liveBusLocation.id || selected?.id === "demo-shuttle-bus-t102" ? 16 : undefined}
       routeOptions={routeOverlays} selectedRouteId={activeJourney ? "active-journey" : selectedOption?.id} viewportPadding={viewportPadding}
       onRouteSelect={(id) => { if (!activeJourney) { setRouteId(id); setSnapIndex(1); } }} onSelect={select}
       onMapPress={() => { if (activeJourney) return; setSnapIndex(0); setEditing(null); setLayersOpen(false); Keyboard.dismiss(); }}
@@ -217,7 +223,7 @@ export default function Explore() {
           {!candidates.length && <Typography style={[ui.muted, { padding: 12 }]}>No matching demo places. Try “park”, “mall”, or “Kwasa”.</Typography>}
         </ScrollView>
       </Surface>}
-      <Surface style={{ alignSelf: "flex-start", marginHorizontal: 18, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "#FFFFFFF2" }}><DemoNote text={routing ? user ? "ROUTE ESTIMATES · NO LIVE TRAFFIC" : "DEMO STARTING POINT · ENABLE GPS WITH LOCATE" : "DEMO OVERLAYS · NOT LIVE TRAFFIC"} /></Surface>
+      <Surface style={{ alignSelf: "flex-start", marginHorizontal: 18, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "#FFFFFFF2" }}><DemoNote text={routing ? user ? "ROUTE ESTIMATES · NO LIVE TRAFFIC" : "DEMO STARTING POINT · ENABLE GPS WITH LOCATE" : showShuttle ? "DEMO BUS POSITION & TIMETABLE" : "DEMO OVERLAYS · NOT LIVE TRAFFIC"} /></Surface>
 
     </View>}
     {!activeJourney && !searchOpen && <View style={{ position: "absolute", right: 18, bottom: sheetMode ? Math.min(sheetHeight + 12, Math.max(18, mapHeight - (routing ? 240 : 220))) : 22, zIndex: 2 }}><IconButton icon={LocateFixed} label="Show my location" onPress={() => { void locate(); }} /></View>}
@@ -231,9 +237,9 @@ export default function Explore() {
       <ScrollView key="map-sheet-scroll" removeClippedSubviews={false} scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
         {sheetMode === "traffic_details" ? snapIndex === 0 ? <View style={{ gap: 6 }}><Typography style={ui.heading}>{corridor.delay} min delay</Typography><DemoNote text="Simulated congestion · expand for traffic analysis" /></View> : <TrafficDetailsContent corridor={corridor} onPlanJourney={() => enterRouting()} onClose={closeSheet} />
           : routing ? <PlanJourneyContent mode={travelMode} onModeChange={(mode) => { setTravelMode(mode); setRouteId(undefined); }} options={options} selectedId={selectedOption?.id} onSelect={setRouteId} onStart={startJourney} onExpand={() => setSnapIndex(2)} compact={snapIndex === 0} expanded={snapIndex === 2} destination={destination} stickyStart loading={loading} routeMessage={routeMessage} />
-          : sheetMode === "shuttle" ? <ShuttleContent compact={snapIndex === 0} stopName={selected?.name} onClose={closeSheet} onFocusBus={(route) => {
-            const coordinate: Coordinate = route === "S1" ? [101.51425, 3.17901] : [101.5099, 3.18133];
-            setSelected({ id: "demo-shuttle-bus", name: `Demo bus ${route}`, subtitle: "Simulated vehicle location", coordinate, kind: "transport" }); setCenter(coordinate); setSnapIndex(0); setCameraKey((key) => key + 1);
+          : sheetMode === "shuttle" ? <ShuttleContent compact={snapIndex === 0} stopName={selected?.name} stopId={selected?.id} onClose={closeSheet} onFocusBus={(route) => {
+            const bus: Place = route === "S1" ? liveBusPlace : { id: "demo-shuttle-bus-t102", name: "Demo feeder bus T102", subtitle: "Simulated vehicle location", coordinate: [101.5099, 3.18133], kind: "transport" };
+            setSelected(bus); setCenter(bus.coordinate); setSnapIndex(0); setCameraKey((key) => key + 1);
           }} />
           : cameraSelected ? <>
             {snapIndex > 0 && <Typography style={ui.muted}>{selected.subtitle}</Typography>}

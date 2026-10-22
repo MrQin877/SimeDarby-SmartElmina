@@ -636,3 +636,5 @@ export const residentPerks = [
   { icon: "calendar", title: "Priority sports court booking", detail: "Book tennis and futsal up to 7 days ahead." },
   { icon: "sprout", title: "10% off at Community Nursery", detail: "Native shrubs and trees for your home." },
 ] as const;
+
+export { elminaBusStops, shuttleRouteCoordinates, liveBusLocation } from "./shuttle-data";

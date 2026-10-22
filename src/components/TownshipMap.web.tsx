@@ -5,6 +5,7 @@ import { Map, Marker, setWorkerUrl, type StyleSpecification } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css";
 import { CENTER } from "../lib/data";
 import { lineFeature, mapStyle, trafficLines, roadLayerIds, routeBounds, type MapProps } from "../lib/map";
+import { SHUTTLE_BLUE, liveBusLocation } from "../lib/shuttle-data";
 import { colors } from "../lib/theme";
 import { Pressable, Text, View } from "react-native";
 export default function TownshipMap(props: MapProps) {
@@ -99,7 +100,8 @@ export default function TownshipMap(props: MapProps) {
       b.setAttribute("aria-label", p.name);
       const iconRoot = createRoot(b); roots.push(iconRoot);
       iconRoot.render(<MapMarkerBadge place={p} selected={props.selectedId === p.id} />);
-      b.style.cssText = "display:flex;align-items:center;justify-content:center;height:48px;width:48px;border:0;padding:0;background:transparent;cursor:pointer;overflow:visible";
+      const size = p.id === liveBusLocation.id ? 80 : 48;
+      b.style.cssText = `display:flex;align-items:center;justify-content:center;height:${size}px;width:${size}px;border:0;padding:0;background:transparent;cursor:pointer;overflow:visible`;
       b.onclick = (e) => {
         e.stopPropagation();
         current.current.onSelect?.(p);
@@ -133,6 +135,17 @@ export default function TownshipMap(props: MapProps) {
       });
     }
   }, [loaded, props.traffic]);
+  useEffect(() => {
+    const m = map.current;
+    if (!loaded || !m || !props.shuttleRoute) return;
+    m.addSource("shuttle-route-source", { type: "geojson", data: lineFeature(props.shuttleRoute) });
+    m.addLayer({ id: "shuttle-route-casing", source: "shuttle-route-source", type: "line", paint: { "line-color": colors.white, "line-width": 8 }, layout: { "line-cap": "round", "line-join": "round" } });
+    m.addLayer({ id: "shuttle-route-line", source: "shuttle-route-source", type: "line", paint: { "line-color": SHUTTLE_BLUE, "line-width": 5 }, layout: { "line-cap": "round", "line-join": "round" } });
+    return () => {
+      ["shuttle-route-line", "shuttle-route-casing"].forEach(id => { if (m.getLayer(id)) m.removeLayer(id); });
+      if (m.getSource("shuttle-route-source")) m.removeSource("shuttle-route-source");
+    };
+  }, [loaded, props.shuttleRoute]);
   useEffect(() => {
     const m = map.current;
     if (!loaded || !m) return;
@@ -169,16 +182,18 @@ export default function TownshipMap(props: MapProps) {
   useEffect(() => {
     if (loaded && props.routeOptions?.length && !props.following) {
       map.current?.fitBounds(routeBounds(props.routeOptions.flatMap((option) => option.coordinates)), { padding: { top: props.viewportPadding?.top || 180, bottom: props.viewportPadding?.bottom || 230, left: 40, right: 40 }, duration: 600, maxZoom: 15 });
+    } else if (loaded && props.shuttleRoute?.length && props.zoomLevel === undefined) {
+      map.current?.fitBounds(routeBounds(props.shuttleRoute), { padding: { top: props.viewportPadding?.top || 110, bottom: props.viewportPadding?.bottom || 230, left: 40, right: 40 }, duration: 600, maxZoom: 15 });
     } else if (loaded)
       map.current?.easeTo({
         center: props.center || CENTER,
         bearing: props.bearing || 0,
         pitch: props.pitch || 0,
-        zoom: props.following ? 16 : props.route ? 15 : 14.4,
+        zoom: props.zoomLevel ?? (props.following ? 16 : props.route ? 15 : 14.4),
         padding: { top: props.viewportPadding?.top || 0, bottom: props.viewportPadding?.bottom || 0, left: 0, right: 0 },
         duration: 600,
       });
-  }, [loaded, props.center, props.bearing, props.pitch, props.following, props.cameraKey, props.route, props.routeOptions, props.viewportPadding]);
+  }, [loaded, props.center, props.bearing, props.pitch, props.following, props.cameraKey, props.route, props.routeOptions, props.viewportPadding, props.zoomLevel, props.shuttleRoute]);
   return (
     <View style={{ position: "absolute", inset: 0 }}>
       {createElement("div", {

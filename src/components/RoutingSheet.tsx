@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Image, View } from "react-native";
 import { Check, ChevronDown, ChevronRight, Car, Bus, Footprints, MapPin, ArrowRight, TriangleAlert } from "lucide-react-native";
 import { Badge, Button, DemoNote, PressableFeedback, Surface, Typography } from "./Common";
+import CarbonEmissionCard from "./CarbonEmissionCard";
 import LineTabs from "./LineTabs";
 import Action from "./Action";
 import { colors, fonts, ui } from "../lib/theme";
@@ -80,6 +81,7 @@ export default function RoutingSheet({ mode, onModeChange, options, selectedId, 
     </View>
     {!stickyStart && selected && <Action disabled={selected.coordinates.length < 2} label={mode === "drive" ? "Start" : "Start Navigation"} onPress={() => onStart(selected)} />}
     {expanded && selected && <View style={{ gap: 16 }}>
+      {destination && <CarbonEmissionCard durationMinutes={selected.duration / 60} />}
       <Surface style={{ padding: 14, backgroundColor: colors.amberSoft, gap: 8 }}><View style={[ui.row, { gap: 8 }]}><TriangleAlert size={18} color={colors.amber} /><Typography style={[ui.heading, { fontSize: 14 }]}>Before you travel</Typography></View><Typography style={ui.muted}>{mode === "walk" ? "Check crossing signals, lighting and path access. Mapped access may change; this route is not an accessibility audit." : mode === "transit" ? "Proposed services and example departures. These mapped corridors are not verified operating bus or rail routes." : "Road estimates exclude live traffic. Follow current road signs and closures."}</Typography></Surface>
       {destination && <Surface style={[ui.card, { padding: 0, overflow: "hidden" }]}>
         <Image source={{ uri: destination.id === "park" ? "https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=900&auto=format&fit=crop&q=75" : "https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=900&auto=format&fit=crop&q=75" }} accessibilityLabel="Illustrative destination photo" style={{ width: "100%", height: 140 }} />

@@ -10,6 +10,7 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
+import BusReminderAlerts from "../components/BusReminderAlerts";
 import Providers from "../components/Providers";
 import { Spinner } from "../components/Common";
 import { useAppToast } from "../hooks/useAppToast";
@@ -60,6 +61,7 @@ function Screens() {
         <Stack.Screen name="voucher/[id]" />
         <Stack.Screen name="alerts" options={{ animation: "slide_from_right" }} />
       </Stack>
+      <BusReminderAlerts />
     </>
   );
 }
