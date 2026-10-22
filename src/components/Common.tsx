@@ -1,20 +1,18 @@
-import type { ReactNode } from "react";
-import { ScrollView, View, type StyleProp, type ViewStyle } from "react-native";
+import type { ComponentProps, ReactNode } from "react";
+import { View, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
   Easing,
   LinearTransition,
   SlideInDown,
   SlideOutDown,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { ArrowLeft, ArrowUpRight, type LucideIcon } from "lucide-react-native";
+import { ArrowUpRight, type LucideIcon } from "lucide-react-native";
 import { Alert } from "heroui-native/alert";
 import { Avatar } from "heroui-native/avatar";
 import { Button } from "heroui-native/button";
 import { Card as HeroCard } from "heroui-native/card";
 import { Chip } from "heroui-native/chip";
-import { CloseButton } from "heroui-native/close-button";
+import { CloseButton as HeroCloseButton } from "heroui-native/close-button";
 import { Description } from "heroui-native/description";
 import { FieldError } from "heroui-native/field-error";
 import { Input } from "heroui-native/input";
@@ -24,7 +22,7 @@ import { SearchField } from "heroui-native/search-field";
 import { Separator } from "heroui-native/separator";
 import { Spinner } from "heroui-native/spinner";
 import { Surface } from "heroui-native/surface";
-import { Typography } from "heroui-native/text";
+import { Typography } from "./AccessibleTypography";
 import { TextArea } from "heroui-native/text-area";
 import { TextField } from "heroui-native/text-field";
 import { colors, fonts, radius, ui } from "../lib/theme";
@@ -35,7 +33,6 @@ export {
   Button,
   HeroCard,
   Chip,
-  CloseButton,
   Description,
   FieldError,
   Input,
@@ -49,6 +46,10 @@ export {
   TextArea,
   TextField,
 };
+
+export function CloseButton(props: ComponentProps<typeof HeroCloseButton>) {
+  return <HeroCloseButton {...props} size="sm" iconProps={{ ...props.iconProps, size: 16 }} style={[props.style, { width: 28, height: 28, minWidth: 28, minHeight: 28, borderRadius: 14 }]} />;
+}
 
 export function IconButton({
   icon: Icon,
@@ -72,14 +73,15 @@ export function IconButton({
       onPress={onPress}
       style={[
         {
-          width: 44,
-          height: 44,
-          borderRadius: radius.field,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
           backgroundColor: colors.white,
           borderWidth: 1,
           borderColor: colors.border,
         },
         style,
+        ui.iconButton,
       ]}
     >
       <Icon size={20} color={color} strokeWidth={1.9} />
@@ -183,58 +185,7 @@ export function AnimatedSheet({
   );
 }
 
-export function Page({
-  children,
-  title,
-  subtitle,
-  back = false,
-  right,
-}: {
-  children?: ReactNode;
-  title?: string;
-  subtitle?: string;
-  back?: boolean;
-  right?: ReactNode;
-}) {
-  return (
-    <SafeAreaView style={ui.screen} edges={["top"]}>
-      <ScrollView
-        contentContainerStyle={ui.page}
-        keyboardShouldPersistTaps="handled"
-      >
-        {title && (
-          <View style={{ gap: 6 }}>
-            {back && (
-              <View style={{ marginLeft: -12, marginBottom: 4 }}>
-                <IconButton
-                  icon={ArrowLeft}
-                  label="Go back"
-                  onPress={() =>
-                    router.canGoBack()
-                      ? router.back()
-                      : router.replace("/home")
-                  }
-                />
-              </View>
-            )}
-            <View style={ui.between}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Typography.Heading type="h1" style={ui.title}>
-                  {title}
-                </Typography.Heading>
-                {subtitle && (
-                  <Description style={ui.muted}>{subtitle}</Description>
-                )}
-              </View>
-              {right}
-            </View>
-          </View>
-        )}
-        {children}
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+export { Page } from "./PageFrame";
 
 export function Badge({
   children,

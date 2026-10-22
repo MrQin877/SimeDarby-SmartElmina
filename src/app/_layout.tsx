@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import "../../global.css";
 import {
   useFonts,
@@ -10,12 +11,15 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import Providers from "../components/Providers";
-import { Alert, Spinner } from "../components/Common";
+import { Spinner } from "../components/Common";
+import { useAppToast } from "../hooks/useAppToast";
 import { StoreProvider, useStore } from "../state/store";
 import { colors } from "../lib/theme";
 export { ErrorBoundary } from "expo-router";
 function Screens() {
   const { ready, storageError } = useStore();
+  const notify = useAppToast();
+  useEffect(() => { if (storageError) notify(storageError, "error", "persistent"); }, [storageError, notify]);
   const [fontsLoaded, fontError] = useFonts({
     DMSans_400Regular,
     DMSans_500Medium,
@@ -51,27 +55,15 @@ function Screens() {
         <Stack.Screen name="journey" options={{ animation: "fade" }} />
         <Stack.Screen name="alerts" options={{ animation: "slide_from_right" }} />
       </Stack>
-      <View pointerEvents="none">
-        {storageError && (
-          <Alert status="danger" style={{ margin: 8 }}>
-            <Alert.Indicator />
-            <Alert.Content>
-              <Alert.Description style={{ color: colors.red }}>
-                {storageError}
-              </Alert.Description>
-            </Alert.Content>
-          </Alert>
-        )}
-      </View>
     </>
   );
 }
 export default function RootLayout() {
   return (
-    <Providers>
-      <StoreProvider>
+    <StoreProvider>
+      <Providers>
         <Screens />
-      </StoreProvider>
-    </Providers>
+      </Providers>
+    </StoreProvider>
   );
 }

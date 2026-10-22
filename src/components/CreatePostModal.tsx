@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Modal, StyleSheet, View } from "react-native";
-import { MessageSquarePlus } from "lucide-react-native";
+import { Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { ImagePlus, MessageSquarePlus } from "lucide-react-native";
 import {
   CloseButton,
+  Button,
   FilterChip,
   Input,
   Label,
@@ -13,19 +15,34 @@ import {
 } from "./Common";
 import Action from "./Action";
 import { colors, fonts, radius, ui } from "../lib/theme";
+import { useAppToast } from "../hooks/useAppToast";
 import { useStore } from "../state/store";
 import type { DiscussionPost } from "../lib/model";
 
 export function CreatePostModal({
   isOpen,
   onClose,
+  onPublished,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onPublished?: () => void;
 }) {
   const { data, update } = useStore();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [imageUri, setImageUri] = useState<string>();
+  const notify = useAppToast();
+  const [pickingImage, setPickingImage] = useState(false);
+
+  const attachImage = async () => {
+    setPickingImage(Platform.OS !== "web");
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.7, allowsEditing: true });
+      if (!result.canceled) setImageUri(result.assets[0].uri);
+    } catch { notify("Unable to open your photos. Please try again.", "error"); }
+    finally { setPickingImage(false); }
+  };
   const [category, setCategory] = useState<DiscussionPost["category"]>("neighbourhood");
 
   if (!isOpen) return null;
@@ -55,9 +72,10 @@ export function CreatePostModal({
       categoryLabel: categoryLabels[category],
       title: title.trim(),
       content: content.trim(),
-      likes: 1,
+      imageUrl: imageUri,
+      likes: 0,
       commentsCount: 0,
-      isLiked: true,
+      isLiked: false,
       badgeLabel: "New Topic",
     };
 
@@ -68,13 +86,18 @@ export function CreatePostModal({
 
     setTitle("");
     setContent("");
+    setImageUri(undefined);
+    setCategory("neighbourhood");
+    onPublished?.();
     onClose();
+    notify("Post published on this device.", "success");
   };
 
   return (
     <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={s.overlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={s.overlay}>
         <Surface style={[s.modalCard, ui.shadow]}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 14 }} showsVerticalScrollIndicator={false}>
           <View style={ui.between}>
             <View style={[ui.row, { gap: 8 }]}>
               <Surface
@@ -141,14 +164,19 @@ export function CreatePostModal({
               />
             </TextField>
 
+            {imageUri ? <View style={{ gap: 6 }}>
+              <Image source={{ uri: imageUri }} style={{ width: "100%", height: 140, borderRadius: radius.card }} accessibilityLabel="Attached image preview" />
+              <Button variant="secondary" onPress={() => setImageUri(undefined)} style={{ minHeight: 44 }}><Button.Label style={{ color: colors.red }}>Remove image</Button.Label></Button>
+            </View> : <Button variant="secondary" isDisabled={pickingImage} onPress={() => { void attachImage(); }} style={{ minHeight: 44, gap: 8 }}><ImagePlus size={18} color={colors.red} /><Button.Label style={{ color: colors.red }}>{pickingImage ? "Opening photos…" : "Attach image"}</Button.Label></Button>}
             <Action
-              label="Post to Community Forum"
+              label="Publish post"
               disabled={!title.trim() || !content.trim()}
               onPress={handleSubmit}
             />
           </View>
+          </ScrollView>
         </Surface>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -163,7 +191,8 @@ const s = StyleSheet.create({
   },
   modalCard: {
     width: "100%",
-    maxWidth: 380,
+    maxWidth: 420,
+    maxHeight: "90%",
     borderRadius: radius.lg,
     backgroundColor: colors.white,
     padding: 20,

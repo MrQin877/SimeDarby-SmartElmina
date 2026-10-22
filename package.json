@@ -15,11 +15,13 @@
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",
+    "@gorhom/bottom-sheet": "^5.2.14",
     "@maplibre/maplibre-react-native": "^11.5.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@types/geojson": "^7946.0.16",
     "babel-preset-expo": "~54.0.10",
     "expo": "~54.0.37",
+    "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.14",
     "expo-dev-client": "~6.0.21",
     "expo-file-system": "~19.0.24",

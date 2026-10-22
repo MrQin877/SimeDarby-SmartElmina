@@ -16,7 +16,7 @@ export const radius = {
   sm: 6,
   md: 8,
   field: 12,
-  card: 12,
+  card: 16,
   lg: 16,
 };
 
@@ -25,19 +25,20 @@ export const colors = {
   redSoft: "#FDECEB",
   ink: "#18181B",
   muted: "#71717A",
-  background: "#F5F5F6",
+  background: "#FAFAFA",
   surfaceSecondary: "#EFEFF1",
   surfaceTertiary: "#EAEAEB",
   white: "#FFFFFF",
-  border: "#E6E6E9",
+  border: "#E4E4E7",
   cream: "#FDECEB",
   green: "#16803C",
   greenSoft: "#EAF8EF",
-  amber: "#B45309",
+  amber: "#D97706",
   amberSoft: "#FEF3C7",
   blue: "#2563EB",
 };
 export const ui = StyleSheet.create({
+  iconButton: { width: 40, height: 40, borderRadius: 20 },
   screen: { flex: 1, backgroundColor: colors.background },
   page: { padding: 22, paddingBottom: 38, gap: 20 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -81,7 +82,7 @@ export const ui = StyleSheet.create({
     color: colors.muted,
   },
   card: {
-    padding: 18,
+    padding: 16,
     borderRadius: radius.card,
     backgroundColor: colors.white,
     borderWidth: 1,

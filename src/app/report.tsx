@@ -5,7 +5,6 @@ import * as FileSystem from "expo-file-system/legacy";
 import { router, useLocalSearchParams } from "expo-router";
 import { Camera, Check } from "lucide-react-native";
 import {
-  Alert,
   Badge,
   Card,
   CloseButton,
@@ -24,6 +23,7 @@ import {
 } from "../components/Common";
 import Action from "../components/Action";
 import { reportError } from "../lib/model";
+import { useAppToast } from "../hooks/useAppToast";
 import { useStore } from "../state/store";
 import { colors, radius, ui } from "../lib/theme";
 export default function ReportScreen() {
@@ -33,7 +33,9 @@ export default function ReportScreen() {
   const [location, setLocation] = useState(params.location || "");
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
-  const [error, setError] = useState("");
+  const [error, setErrorState] = useState("");
+  const notify = useAppToast();
+  const setError = (message: string) => { setErrorState(message); if (message) notify(message, "error"); };
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   async function pick() {
@@ -239,16 +241,6 @@ export default function ReportScreen() {
           </Surface>
         </PressableFeedback>
       )}
-      {error ? (
-        <Alert status="danger">
-          <Alert.Indicator />
-          <Alert.Content>
-            <Alert.Description style={{ color: colors.red }}>
-              {error}
-            </Alert.Description>
-          </Alert.Content>
-        </Alert>
-      ) : null}
       <DemoNote text="Demo mode · reports and photos stay on this device." />
       <Action
         label={busy ? "Saving report…" : "Submit report"}

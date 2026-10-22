@@ -11,10 +11,21 @@ export type Place = {
   kind: PlaceKind;
   detail?: string;
   streamUrl?: string;
+  address?: string;
+  searchCategory?: string;
+  searchStatus?: string;
 };
 export const CENTER: Coordinate = [101.5118, 3.1796];
 // Fixtures are illustrative, including stop/camera placements. Never represent them as verified live observations.
 export const places: Place[] = [
+  {
+    id: "kwasa-hub",
+    name: "Kwasa Damansara Transit Hub",
+    subtitle: "MRT connection · Kwasa Damansara",
+    address: "Jalan Kwasa Sentral, Kwasa Damansara, Selangor · demo address",
+    coordinate: [101.5791, 3.1769],
+    kind: "place",
+  },
   {
     id: "park",
     name: "Elmina Valley Central Park",
@@ -74,26 +85,31 @@ export const places: Place[] = [
   },
   {
     id: "camera-1",
-    name: "Main entrance · Camera 01",
-    subtitle: "Township entrance road",
+    name: "CCTV 01 · GCE Toll Exit 3502",
+    subtitle: "GCE Exit 3502 · Highway approach",
     coordinate: [101.5153, 3.1751],
     kind: "camera",
     streamUrl: process.env.EXPO_PUBLIC_CCTV_STREAM_URL,
   },
   {
     id: "camera-2",
-    name: "Park access · Camera 02",
-    subtitle: "Park access road",
+    name: "CCTV 02 · Persiaran Atmosfera Merge",
+    subtitle: "Persiaran Atmosfera · Merge corridor",
     coordinate: [101.514, 3.1782],
     kind: "camera",
   },
   {
     id: "camera-3",
-    name: "Lakeside · Camera 03",
-    subtitle: "Lakeside approach",
+    name: "CCTV 03 · Central Park Boulevard",
+    subtitle: "Central Park Boulevard · Park access",
     coordinate: [101.51, 3.1806],
     kind: "camera",
   },
+  { id: "elmina-green-1", name: "Elmina Green 1", subtitle: "Jalan Casuarina U17/59A", coordinate: [101.5118, 3.1796], kind: "place", searchCategory: "Neighbourhood", searchStatus: "Open 24 hours · sample" },
+  { id: "atmosfera-stop", name: "Persiaran Atmosfera Bus Stop", subtitle: "Feeder Route S1", coordinate: [101.5135, 3.1785], kind: "transport", searchCategory: "Transit", searchStatus: "Next bus in 6 min · simulated" },
+  { id: "temu-hub", name: "Temu Commercial Hub", subtitle: "Persiaran Atmosfera", coordinate: [101.5099, 3.18133], kind: "place", searchCategory: "Shopping", searchStatus: "Stores open · sample" },
+  { id: "rainbow-bridge", name: "Elmina Central Park & Rainbow Bridge", subtitle: "Park & recreation · City of Elmina", coordinate: [101.51425, 3.17901], kind: "place", searchCategory: "Recreation", searchStatus: "Open 24 hours · sample" },
+  { id: "home-valley-3", name: "Elmina Valley 3", subtitle: "Home · illustrative township location", coordinate: CENTER, kind: "place", searchCategory: "Home" },
 ];
 export const filters: MapFilter[] = ["Traffic", "Transport", "Hazards", "CCTV"];
 export function visiblePlaces(filter: MapFilter): Place[] {
@@ -109,7 +125,7 @@ export function searchPlaces(query: string) {
   const q = query.trim().toLocaleLowerCase();
   return places.filter(
     (p) =>
-      p.kind === "place" &&
+      (p.kind === "place" || p.id === "atmosfera-stop") &&
       `${p.name} ${p.subtitle}`.toLocaleLowerCase().includes(q),
   );
 }
@@ -312,13 +328,13 @@ export const initialAlerts: AlertItem[] = [
   },
   {
     id: "alt-02",
-    title: "Persiaran Atmosfera Eastbound Detour",
-    subtitle: "City Council & Sime Darby",
+    title: "🚗 GCE Exit 3502 Bottleneck Delay",
+    subtitle: "Heavy congestion on Persiaran Atmosfera · estimated delay 12 min",
     source: "Traffic Command Center",
     timestamp: "45 mins ago",
     type: "mobility",
     badgeLabel: "Mobility Alert",
-    content: "Culvert installation active between Valley Gate 2 and Central Park. Average delay: 8–10 mins. Feeder Bus S1 diverted via Persiaran Elmina Utama.",
+    content: "Heavy merging traffic at GCE Exit 3502. Estimated delay: 12 minutes. Allow extra travel time or compare feeder bus and carpool options.",
     isRead: false,
     isImportant: true,
     actionType: "mobility_link",
@@ -370,13 +386,13 @@ export const initialAlerts: AlertItem[] = [
   },
   {
     id: "alt-06",
-    title: "Scheduled Fiber Optic & Smart Lighting Calibration",
-    subtitle: "Municipal Works",
+    title: "📢 System Maintenance Alert",
+    subtitle: "Gate 3 sensor maintenance active today",
     source: "City Infrastructure Council",
     timestamp: "Yesterday, 2:30 PM",
     type: "maintenance",
     badgeLabel: "Municipal Works",
-    content: "Night window maintenance (11 PM - 3 AM) completed across Elmina Ridge. All IoT streetlamps and automated crosswalk sensors are fully functional.",
+    content: "Scheduled maintenance of Gate 3 access sensors is active today from 9:00 AM to 4:00 PM. Use the marked adjacent lane and follow the wardens’ directions. Visitor passes remain available.",
     isRead: true,
     isImportant: false,
     actionType: "none",
@@ -500,3 +516,106 @@ export const popularDestinations = [
     coordinate: [101.5727, 3.1762] as Coordinate,
   },
 ];
+
+export interface CCTVTelemetry {
+  id: string;
+  name: string;
+  location: string;
+  resolution: string;
+  camTag: string;
+  statusTone: "green" | "amber" | "red";
+  statusText: string;
+  statusDetail: string;
+  statusBadge: string;
+  flowRate: string;
+  detections: { label: string; top: number | string; left: number | string }[];
+  throughput: { value: string; note: string };
+  detectedSpeed: { value: string; limit: string };
+  roadDensity: { value: string; note: string };
+  queueLength: { value: string; note: string };
+  vehicleClassification: { cars: number; lorries: number; motorcycles: number; vans: number };
+  advisory: string;
+}
+
+export const cctvTelemetry: CCTVTelemetry[] = [
+  {
+    id: "cam-1", name: "CCTV 01 · GCE Toll Exit 3502", location: "GCE Exit 3502 · Highway approach",
+    resolution: "1080p 60fps", camTag: "CAM-01 • 1080p", statusTone: "green",
+    statusText: "GOOD TRAFFIC", statusDetail: "Smooth Flow • Avg speed 74 km/h • Clear lanes", statusBadge: "Good Flow", flowRate: "32 veh/min",
+    detections: [
+      { label: "CAR 99% • 74 km/h", top: "49%", left: "18%" },
+      { label: "SUV 97% • 74 km/h", top: "65%", left: "56%" },
+    ],
+    throughput: { value: "32 veh/min", note: "Flowing smoothly (94% optimal index)" },
+    detectedSpeed: { value: "74 km/h", limit: "Speed limit: 80 km/h" },
+    roadDensity: { value: "22%", note: "Low density • Unhindered headway" },
+    queueLength: { value: "0 meters", note: "No delay • Zero tailback" },
+    vehicleClassification: { cars: 68, lorries: 18, motorcycles: 10, vans: 4 },
+    advisory: "Corridor operating at peak efficiency in this simulation. Recommended for a fast highway exit towards GCE.",
+  },
+  {
+    id: "cam-2", name: "CCTV 02 · Persiaran Atmosfera Merge", location: "Persiaran Atmosfera · Merge corridor",
+    resolution: "1080p 60fps", camTag: "CAM-02 • 1080p", statusTone: "amber",
+    statusText: "MODERATE DELAY", statusDetail: "Moderate Congestion • Avg speed 38 km/h • Merging traffic", statusBadge: "Moderate Congestion", flowRate: "46 veh/min",
+    detections: [
+      { label: "CAR 98% • 38 km/h", top: "45%", left: "17%" },
+      { label: "LORRY 96% • 31 km/h", top: "63%", left: "56%" },
+      { label: "BIKE 94% • 42 km/h", top: "75%", left: "25%" },
+    ],
+    throughput: { value: "46 veh/min", note: "Elevated demand (68% optimal index)" },
+    detectedSpeed: { value: "38 km/h", limit: "Speed limit: 60 km/h" },
+    roadDensity: { value: "61%", note: "Moderate density • Reduced headway" },
+    queueLength: { value: "180 meters", note: "Estimated delay: 6 minutes" },
+    vehicleClassification: { cars: 70, lorries: 14, motorcycles: 12, vans: 4 },
+    advisory: "Merging traffic is slowing this simulated corridor. Compare the Elmina West bypass before departing; allow an extra 6 minutes.",
+  },
+  {
+    id: "cam-3", name: "CCTV 03 · Central Park Boulevard", location: "Central Park Boulevard · Park access",
+    resolution: "1080p 60fps", camTag: "CAM-03 • 1080p", statusTone: "green",
+    statusText: "SMOOTH FLOW", statusDetail: "Smooth Flow • Avg speed 45 km/h • Clear park access", statusBadge: "Smooth Flow", flowRate: "18 veh/min",
+    detections: [
+      { label: "CAR 99% • 45 km/h", top: "52%", left: "20%" },
+      { label: "BUS 98% • 40 km/h", top: "70%", left: "55%" },
+    ],
+    throughput: { value: "18 veh/min", note: "Light demand (91% optimal index)" },
+    detectedSpeed: { value: "45 km/h", limit: "Speed limit: 50 km/h" },
+    roadDensity: { value: "16%", note: "Low density • Park access clear" },
+    queueLength: { value: "0 meters", note: "No queue at park entrance" },
+    vehicleClassification: { cars: 73, lorries: 5, motorcycles: 16, vans: 6 },
+    advisory: "Central Park access is clear in this simulation. Continue at the posted speed and give way to pedestrians at crossings.",
+  },
+];
+
+/** Preserve existing map IDs and deep links while using the requested telemetry IDs. */
+export function getCCTVTelemetry(cameraId: string): CCTVTelemetry | undefined {
+  const canonical = cameraId.replace(/^camera-/, "cam-");
+  return cctvTelemetry.find((camera) => camera.id === canonical);
+}
+
+export interface RoadCorridor {
+  id: string;
+  name: string;
+  coordinate: Coordinate;
+  speedLimit: number;
+  speed: number;
+  delay: number;
+  queue: number;
+  throughput: number;
+  status: string;
+  tone: "green" | "amber" | "red";
+  advisory: string;
+}
+export const roadCorridors: RoadCorridor[] = [
+  { id: "gce", name: "GCE Exit 3502", coordinate: [101.515847, 3.174127], speedLimit: 80, speed: 14, delay: 12, queue: 450, throughput: 78, status: "Heavy congestion", tone: "red", advisory: "Compare the Elmina West bypass before departing. Allow an extra 12 minutes in this simulation." },
+  { id: "atmosfera", name: "Persiaran Atmosfera", coordinate: [101.512122, 3.173294], speedLimit: 60, speed: 38, delay: 6, queue: 180, throughput: 46, status: "Moderate congestion", tone: "amber", advisory: "Merging traffic is slowing this corridor. Compare route options and leave extra travel time." },
+  { id: "central-park", name: "Central Park Boulevard", coordinate: [101.509225, 3.177905], speedLimit: 50, speed: 45, delay: 0, queue: 0, throughput: 18, status: "Smooth flow", tone: "green", advisory: "Park access is clear in this simulation. Follow the posted speed and give way at pedestrian crossings." },
+];
+export function resolveRoadCorridor(id?: string, name?: string, coordinate?: Coordinate): RoadCorridor {
+  const exact = roadCorridors.find((road) => road.id === id);
+  if (exact) return { ...exact, coordinate: coordinate || exact.coordinate };
+  const label = name?.toLowerCase() || "";
+  const matching = roadCorridors.find((road) => label.includes(road.name.toLowerCase()) || (road.id === "gce" && /gce|e35/.test(label)) || (road.id === "atmosfera" && label.includes("atmosfera")));
+  const nearest = coordinate ? [...roadCorridors].sort((a, b) => Math.hypot(a.coordinate[0] - coordinate[0], a.coordinate[1] - coordinate[1]) - Math.hypot(b.coordinate[0] - coordinate[0], b.coordinate[1] - coordinate[1]))[0] : roadCorridors[0];
+  const road = matching || nearest;
+  return { ...road, name: name || road.name, coordinate: coordinate || road.coordinate };
+}

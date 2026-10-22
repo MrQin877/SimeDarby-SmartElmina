@@ -8,7 +8,7 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <HeroUINativeProvider>{children}</HeroUINativeProvider>
+        <HeroUINativeProvider config={{ toast: { defaultProps: { placement: "top" }, insets: { top: 12, left: 18, right: 18 }, maxVisibleToasts: 2 } }}>{children}</HeroUINativeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

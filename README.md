@@ -7,17 +7,19 @@
 ## Features
 
 - **Home Dashboard (`src/app/(tabs)/home.tsx`)**
-  - Quick destination search with voice input support
-  - Saved favourite places (`Home`, `Work`, `Park`, `Mall`) and saved routes
-  - Sample township traffic snapshot across key corridors (`Clear`, `Moderate`, `Heavy`)
-  - Latest official announcements and resident report status summary
+  - Traffic Map, Plan Journey and Bus & Shuttle shortcuts
+  - Latest official announcements and a sticky resident header
 - **Interactive Township Map (`src/app/(tabs)/explore.tsx`)**
   - Powered by **MapLibre** (`@maplibre/maplibre-react-native` on iOS/Android & `maplibre-gl` on Web)
-  - Filterable map layers: **Traffic**, **Transport** (proposed feeder bus stops & timetables), **Hazards**, and **CCTV** road cameras (`expo-video`)
-  - Tap anywhere on the map to drop a pin, bookmark places, or launch route planning
-- **Route Planning & Turn-by-Turn Journey (`src/app/route.tsx`, `src/app/journey.tsx`)**
-  - Calculates driving, cycling, and walking routes with step-by-step navigation instructions
-  - Interactive journey preview mode with distance and ETA updates
+  - All, Traffic, Shuttle and CCTV layers, with road telemetry opened from road segments
+  - Long-press to drop a pin; destination search stays over the same mounted map
+- **Route Planning & Journey Preview (`src/app/(tabs)/explore.tsx`)**
+  - Driving geometry from an OSRM road service; walking geometry from a pedestrian routing graph
+  - Proposed transit itineraries combine mapped road and walking legs; schedules and bookings remain simulated
+  - Search, route planning and active guidance are in-page overlays. Legacy `/search`, `/route` and `/journey` links redirect to Explore
+  - Three sheet snap positions, fixed Start action, and simulated instruction progression with automatic return on arrival
+  - Network failure shows estimates without fabricated polylines and disables Start until geometry loads
+  - Configure road and pedestrian endpoints in `.env.example`; public services are for light demo usage
 - **Community Feed & Announcements (`src/app/(tabs)/community.tsx`, `src/app/announcement.tsx`)**
   - Official Township Management updates filterable by category (`Road & Traffic`, `Safety`, `Environment`, `Community`)
   - Resident reactions, comments, and direct **"View on map"** links for location-tagged notices

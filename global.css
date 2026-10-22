@@ -13,37 +13,37 @@
   :root {
     @variant light {
       /* Theme Colors (Light Mode) — Sime Darby Crimson & Neutral OKLCH */
-      --accent: oklch(58.84% 0.1968 27.33);
-      --accent-foreground: oklch(99.11% 0 0);
-      --background: oklch(97.02% 0.0000 27.33);
-      --border: oklch(90.00% 0.0000 27.33);
-      --danger: oklch(65.32% 0.2328 358.56);
-      --danger-foreground: oklch(99.11% 0 0);
-      --default: oklch(94.00% 0.0000 27.33);
-      --default-foreground: oklch(21.03% 0.0059 27.33);
-      --field-background: oklch(100.00% 0.0000 27.33);
+      --accent: #DE372B;
+      --accent-foreground: #FFFFFF;
+      --background: #FAFAFA;
+      --border: #E4E4E7;
+      --danger: #DE372B;
+      --danger-foreground: #FFFFFF;
+      --default: #EFEFF1;
+      --default-foreground: #18181B;
+      --field-background: #FFFFFF;
       --field-border: transparent;
-      --field-foreground: oklch(21.03% 0.0000 27.33);
-      --field-placeholder: oklch(55.17% 0.0000 27.33);
-      --focus: oklch(58.84% 0.1968 27.33);
-      --foreground: oklch(21.03% 0.0000 27.33);
-      --muted: oklch(55.17% 0.0000 27.33);
-      --overlay: oklch(100.00% 0.0000 27.33);
-      --overlay-foreground: oklch(21.03% 0.0000 27.33);
+      --field-foreground: #18181B;
+      --field-placeholder: #71717A;
+      --focus: #DE372B;
+      --foreground: #18181B;
+      --muted: #71717A;
+      --overlay: #FFFFFF;
+      --overlay-foreground: #18181B;
       --scrollbar: oklch(87.10% 0.0000 27.33);
-      --segment: oklch(100.00% 0.0000 27.33);
-      --segment-foreground: oklch(21.03% 0.0000 27.33);
-      --separator: oklch(92.00% 0.0000 27.33);
-      --success: oklch(73.29% 0.1935 123.63);
-      --success-foreground: oklch(21.03% 0.0059 123.63);
-      --surface: oklch(100.00% 0.0000 27.33);
-      --surface-foreground: oklch(21.03% 0.0000 27.33);
-      --surface-secondary: oklch(95.24% 0.0000 27.33);
-      --surface-secondary-foreground: oklch(21.03% 0.0000 27.33);
-      --surface-tertiary: oklch(93.73% 0.0000 27.33);
-      --surface-tertiary-foreground: oklch(21.03% 0.0000 27.33);
-      --warning: oklch(78.19% 0.1585 45.15);
-      --warning-foreground: oklch(21.03% 0.0059 45.15);
+      --segment: #FFFFFF;
+      --segment-foreground: #18181B;
+      --separator: #E4E4E7;
+      --success: #16803C;
+      --success-foreground: #FFFFFF;
+      --surface: #FFFFFF;
+      --surface-foreground: #18181B;
+      --surface-secondary: #EFEFF1;
+      --surface-secondary-foreground: #18181B;
+      --surface-tertiary: #EAEAEB;
+      --surface-tertiary-foreground: #18181B;
+      --warning: #D97706;
+      --warning-foreground: #FFFFFF;
     }
 
     @variant dark {

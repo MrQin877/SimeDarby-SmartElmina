@@ -31,7 +31,7 @@ export default function AnnouncementScreen() {
   const { data, update } = useStore();
   const [text, setText] = useState("");
 
-  if (!post) return <Page title="Announcement unavailable" back />;
+  if (!post) return <Page title="Announcement unavailable" back backTo="/community" />;
 
   const isAcknowledged = data.acknowledgedNotices.includes(post.id);
   const comments = data.comments.filter((c) => c.postId === id);
@@ -60,6 +60,7 @@ export default function AnnouncementScreen() {
       title="Township Advisory"
       subtitle={post.source || "Official Sime Darby Property Circular"}
       back
+      backTo="/community"
       right={
         <IconButton
           icon={Share2}

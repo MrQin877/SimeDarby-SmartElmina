@@ -1,3 +1,5 @@
+import { restoreShortcuts, type ShortcutItem } from "./shortcuts";
+
 export type Report = {
   id: string;
   category: string;
@@ -13,6 +15,9 @@ export type Comment = {
   postId: string;
   text: string;
   createdAt: string;
+  authorName?: string;
+  authorNeighborhood?: string;
+  isVerified?: boolean;
 };
 
 export type DiscussionPost = {
@@ -70,11 +75,20 @@ export type LocalData = {
   comments: Comment[];
   liked: string[];
   saved: string[];
+  recentSearches: string[];
+  workPlaceId: string | null;
+  homePlaceId: string | null;
+  shortcuts: ShortcutItem[];
   name: string;
   fullName: string;
   precinct: string;
   address: string;
   phone: string;
+  email: string;
+  emailVerified: boolean;
+  residentId: string;
+  unitId: string;
+  memberSince: string;
   language: "English (UK)" | "Bahasa Melayu" | "中文 (Simplified)";
   textSize: "standard" | "large";
   notifications: {
@@ -96,11 +110,20 @@ export const initialData: LocalData = {
   comments: [],
   liked: [],
   saved: [],
+  recentSearches: ["elmina-green-1", "atmosfera-stop", "temu-hub", "rainbow-bridge"],
+  workPlaceId: null,
+  homePlaceId: null,
+  shortcuts: [],
   name: "Farhan",
   fullName: "Ahmad Farhan Bin Roslan",
   precinct: "City of Elmina — Demo Precinct",
   address: "Elmina Valley 3, Persiaran Atmosfera",
   phone: "+60 12-345 6789",
+  email: "farhan@example.com",
+  emailVerified: true,
+  residentId: "900512-10-XXXX",
+  unitId: "ELM-8829-RIDGE",
+  memberSince: "Oct 2022",
   language: "English (UK)",
   textSize: "standard",
   notifications: {
@@ -161,11 +184,20 @@ export function restoreData(raw: string | null): LocalData {
       saved: Array.isArray(d.saved)
         ? d.saved.filter((s: unknown) => typeof s === "string")
         : [],
+      recentSearches: Array.isArray(d.recentSearches) ? [...new Set(d.recentSearches.filter((value: unknown): value is string => typeof value === "string"))].slice(0, 20) as string[] : initialData.recentSearches,
+      workPlaceId: typeof d.workPlaceId === "string" ? d.workPlaceId : null,
+      homePlaceId: typeof d.homePlaceId === "string" ? d.homePlaceId : null,
+      shortcuts: restoreShortcuts(d.shortcuts),
       name: typeof d.name === "string" && d.name.trim() ? d.name : "Farhan",
       fullName: typeof d.fullName === "string" ? d.fullName : initialData.fullName,
       precinct: typeof d.precinct === "string" ? d.precinct : initialData.precinct,
       address: typeof d.address === "string" ? d.address : initialData.address,
       phone: typeof d.phone === "string" ? d.phone : initialData.phone,
+      email: typeof d.email === "string" ? d.email : initialData.email,
+      emailVerified: typeof d.emailVerified === "boolean" ? d.emailVerified : initialData.emailVerified,
+      residentId: initialData.residentId,
+      unitId: typeof d.unitId === "string" ? d.unitId : initialData.unitId,
+      memberSince: typeof d.memberSince === "string" ? d.memberSince : initialData.memberSince,
       language:
         d.language === "Bahasa Melayu" || d.language === "中文 (Simplified)"
           ? d.language

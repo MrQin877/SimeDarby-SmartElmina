@@ -1,10 +1,10 @@
-import { forwardRef, useEffect, useRef, type ReactNode } from "react";
+import { CloseButton as HeroCloseButton } from "heroui-native/close-button";
+import { forwardRef, useEffect, useRef, type ReactNode, type ComponentProps } from "react";
 import {
   ActivityIndicator,
   Animated,
   Image,
   Pressable,
-  ScrollView,
   Text as RNText,
   TextInput,
   View,
@@ -16,15 +16,13 @@ import {
   type ViewProps,
   type ViewStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
 import {
-  ArrowLeft,
   ArrowUpRight,
   Search,
   X,
   type LucideIcon,
 } from "lucide-react-native";
+import { useTextStyle } from "../hooks/useTextStyle";
 import { colors, fonts, radius, ui } from "../lib/theme";
 
 const HeroCardRoot = ({ children, style, ...props }: ViewProps) => (
@@ -89,7 +87,7 @@ const webPressTransition = {
 } as unknown as ViewStyle;
 
 export const PressableFeedback = Object.assign(
-  ({ children, style, ...props }: PressableProps & { animation?: unknown }) => (
+  ({ children, style, isDisabled, ...props }: PressableProps & { animation?: unknown; isDisabled?: boolean }) => (
     <Pressable
       accessibilityRole="button"
       style={(state) => [
@@ -100,6 +98,7 @@ export const PressableFeedback = Object.assign(
           : { transform: [{ scale: 1 }] },
       ]}
       {...props}
+      disabled={isDisabled || props.disabled}
     >
       {children}
     </Pressable>
@@ -176,33 +175,7 @@ export const Button = Object.assign(
   },
 );
 
-export const CloseButton = ({
-  onPress,
-  accessibilityLabel = "Close",
-  style,
-}: PressableProps) => (
-  <Pressable
-    accessibilityRole="button"
-    accessibilityLabel={accessibilityLabel}
-    onPress={onPress}
-    style={(state) => [
-      webPressTransition,
-      {
-        width: 44,
-        height: 44,
-        borderRadius: radius.field,
-        backgroundColor: colors.white,
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: state.pressed ? 0.88 : 1,
-        transform: [{ scale: state.pressed ? 0.985 : 1 }],
-      },
-      typeof style === "function" ? style(state) : style,
-    ]}
-  >
-    <X size={21} color={colors.ink} strokeWidth={1.8} />
-  </Pressable>
-);
+export const CloseButton = (props: ComponentProps<typeof HeroCloseButton>) => <HeroCloseButton {...props} size="sm" iconProps={{ ...props.iconProps, size: 16 }} style={[props.style, { width: 28, height: 28, minWidth: 28, minHeight: 28, borderRadius: 14 }]} />;
 
 export const Chip = Object.assign(
   ({
@@ -471,36 +444,15 @@ export const SearchField = Object.assign(
   },
 );
 
-const TypographyBase = ({
-  children,
-  style,
-  ...props
-}: TextProps & { type?: string; weight?: string; color?: string; align?: string }) => (
-  <RNText style={[ui.body, style]} {...props}>
-    {children}
-  </RNText>
-);
-export const Typography = Object.assign(TypographyBase, {
-  Heading: ({
-    children,
-    style,
-    ...props
-  }: TextProps & { type?: string }) => (
-    <RNText style={[ui.heading, style]} {...props}>
-      {children}
-    </RNText>
-  ),
-  Paragraph: ({ children, style, ...props }: TextProps) => (
-    <RNText style={[ui.body, style]} {...props}>
-      {children}
-    </RNText>
-  ),
-  Code: ({ children, style, ...props }: TextProps) => (
-    <RNText style={[ui.muted, style]} {...props}>
-      {children}
-    </RNText>
-  ),
-});
+const TypographyBase = ({ children, style, ...props }: TextProps & { type?: string; weight?: string; color?: string; align?: string }) => {
+  const scaled = useTextStyle([ui.body, style]);
+  return <RNText style={scaled} {...props}>{children}</RNText>;
+};
+function Heading({ children, style, ...props }: TextProps & { type?: string }) {
+  const scaled = useTextStyle([ui.heading, style], 18);
+  return <RNText accessibilityRole="header" style={scaled} {...props}>{children}</RNText>;
+}
+export const Typography = Object.assign(TypographyBase, { Heading, Paragraph: TypographyBase, Code: TypographyBase });
 
 export function IconButton({
   icon: Icon,
@@ -523,9 +475,9 @@ export function IconButton({
       style={({ pressed }) => [
         webPressTransition,
         {
-          width: 44,
-          height: 44,
-          borderRadius: radius.field,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
           backgroundColor: colors.white,
           borderWidth: 1,
           borderColor: colors.border,
@@ -535,6 +487,7 @@ export function IconButton({
           transform: [{ scale: pressed ? 0.985 : 1 }],
         },
         style,
+        ui.iconButton,
       ]}
     >
       <Icon size={20} color={color} strokeWidth={1.9} />
@@ -654,54 +607,7 @@ export function AnimatedSheet({
   );
 }
 
-export function Page({
-  children,
-  title,
-  subtitle,
-  back = false,
-  right,
-}: {
-  children?: ReactNode;
-  title?: string;
-  subtitle?: string;
-  back?: boolean;
-  right?: ReactNode;
-}) {
-  return (
-    <SafeAreaView style={ui.screen} edges={["top"]}>
-      <ScrollView
-        contentContainerStyle={ui.page}
-        keyboardShouldPersistTaps="handled"
-      >
-        {title && (
-          <View style={{ gap: 6 }}>
-            {back && (
-              <View style={{ marginLeft: -12, marginBottom: 4 }}>
-                <IconButton
-                  icon={ArrowLeft}
-                  label="Go back"
-                  onPress={() =>
-                    router.canGoBack()
-                      ? router.back()
-                      : router.replace("/home")
-                  }
-                />
-              </View>
-            )}
-            <View style={ui.between}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <RNText style={ui.title}>{title}</RNText>
-                {subtitle && <RNText style={ui.muted}>{subtitle}</RNText>}
-              </View>
-              {right}
-            </View>
-          </View>
-        )}
-        {children}
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+export { Page } from "./PageFrame";
 
 export function Badge({
   children,

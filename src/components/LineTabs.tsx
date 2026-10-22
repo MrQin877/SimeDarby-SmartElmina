@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react-native";
 import { View } from "react-native";
 import { PressableFeedback, Typography } from "./Common";
 import { colors, fonts } from "../lib/theme";
@@ -5,7 +6,7 @@ import { colors, fonts } from "../lib/theme";
 export interface LineTabsProps {
   value: string;
   onChange: (value: string) => void;
-  items: { value: string; label: string }[];
+  items: { value: string; label: string; icon?: LucideIcon; accessibilityLabel?: string }[];
 }
 
 export default function LineTabs({ value, onChange, items }: LineTabsProps) {
@@ -24,6 +25,7 @@ export default function LineTabs({ value, onChange, items }: LineTabsProps) {
           <PressableFeedback
             key={item.value}
             accessibilityRole="tab"
+            accessibilityLabel={item.accessibilityLabel || item.label}
             accessibilityState={{ selected: isSelected }}
             onPress={() => onChange(item.value)}
             style={{
@@ -33,8 +35,11 @@ export default function LineTabs({ value, onChange, items }: LineTabsProps) {
               alignItems: "center",
               paddingHorizontal: 6,
               position: "relative",
+              flexDirection: "row",
+              gap: 5,
             }}
           >
+            {item.icon && <item.icon size={18} color={isSelected ? colors.red : colors.muted} />}
             <Typography
               style={{
                 fontFamily: isSelected ? fonts.bold : fonts.semibold,

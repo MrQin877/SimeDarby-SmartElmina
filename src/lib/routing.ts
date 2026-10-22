@@ -7,6 +7,8 @@ export type RouteStep = {
   bearing: number;
 };
 export type Journey = {
+  mode?: "drive" | "transit" | "walk";
+  isDemo?: boolean;
   destination: string;
   coordinates: Coordinate[];
   duration: number;

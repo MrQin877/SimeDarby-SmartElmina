@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -8,6 +8,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Tabs } from "expo-router";
 import { House, Map, MessagesSquare, type LucideIcon } from "lucide-react-native";
+import { ExploreSheetContext } from "../../components/ExploreSheetContext";
 import { colors, fonts } from "../../lib/theme";
 
 function TabIcon({
@@ -48,15 +49,18 @@ function TabIcon({
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const [sheetVisible, setSheetVisible] = useState(false);
   return (
+    <ExploreSheetContext.Provider value={setSheetVisible}>
     <Tabs
-      initialRouteName="explore"
+      initialRouteName="home"
       screenOptions={{
         headerShown: false,
         animation: "fade",
         tabBarActiveTintColor: colors.red,
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
+          display: sheetVisible ? "none" : "flex",
           backgroundColor: colors.white,
           borderTopColor: colors.border,
           paddingTop: 8,
@@ -104,5 +108,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </ExploreSheetContext.Provider>
   );
 }
