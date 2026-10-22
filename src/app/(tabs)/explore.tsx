@@ -221,14 +221,14 @@ export default function Explore() {
 
     </View>}
     {!activeJourney && !searchOpen && <View style={{ position: "absolute", right: 18, bottom: sheetMode ? Math.min(sheetHeight + 12, Math.max(18, mapHeight - (routing ? 240 : 220))) : 22, zIndex: 2 }}><IconButton icon={LocateFixed} label="Show my location" onPress={() => { void locate(); }} /></View>}
-    {!activeJourney && !searchOpen && (selected || sheetMode) && <DraggableSheet availableHeight={availableHeight} expandedHeight={expandedHeight} index={snapIndex} onSnap={setSnapIndex} snapPoints={snapPoints} compactHandle={routing && snapIndex === 0}>
-      {!(routing && snapIndex === 0) && <View style={[ui.between, { marginBottom: 8, gap: 10 }]}>
+    <DraggableSheet visible={!activeJourney && !searchOpen && Boolean(selected || sheetMode)} availableHeight={availableHeight} expandedHeight={expandedHeight} index={snapIndex} onSnap={setSnapIndex} snapPoints={snapPoints} compactHandle={routing && snapIndex === 0}>
+      <View key="map-sheet-header" collapsable={false} collapsableChildren={false} style={[ui.between, { display: routing && snapIndex === 0 ? "none" : "flex", marginBottom: 8, gap: 10 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${sheetTitle}. ${snapIndex === 2 ? "Collapse" : "Expand"} details`} accessibilityState={{ expanded: snapIndex === 2 }} onPress={() => setSnapIndex(toggledSheetSnap(snapIndex))} style={{ flex: 1, minWidth: 0, minHeight: 36, justifyContent: "center" }}>
           <Typography numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1, fontSize: 16, fontWeight: "600", fontFamily: fonts.semibold, color: colors.ink }}>{sheetTitle}</Typography>
         </Pressable>
-        <CloseButton accessibilityLabel="Close map details" onPress={closeSheet} />
-      </View>}
-      <ScrollView scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
+        <View collapsable={false}><CloseButton accessibilityLabel="Close map details" onPress={closeSheet} /></View>
+      </View>
+      <ScrollView key="map-sheet-scroll" removeClippedSubviews={false} scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
         {sheetMode === "traffic_details" ? snapIndex === 0 ? <View style={{ gap: 6 }}><Typography style={ui.heading}>{corridor.delay} min delay</Typography><DemoNote text="Simulated congestion · expand for traffic analysis" /></View> : <TrafficDetailsContent corridor={corridor} onPlanJourney={() => enterRouting()} onClose={closeSheet} />
           : routing ? <PlanJourneyContent mode={travelMode} onModeChange={(mode) => { setTravelMode(mode); setRouteId(undefined); }} options={options} selectedId={selectedOption?.id} onSelect={setRouteId} onStart={startJourney} onExpand={() => setSnapIndex(2)} compact={snapIndex === 0} expanded={snapIndex === 2} destination={destination} stickyStart loading={loading} routeMessage={routeMessage} />
           : sheetMode === "shuttle" ? <ShuttleContent compact={snapIndex === 0} stopName={selected?.name} onClose={closeSheet} onFocusBus={(route) => {
@@ -250,8 +250,8 @@ export default function Explore() {
             <View style={[ui.row, { gap: 8 }]}><View style={{ flex: 1 }}><Action label="Directions / Plan Journey" onPress={() => enterRouting(selected)} /></View>{selected.id !== "dropped-pin" && <IconButton icon={Bookmark} label={data.saved.includes(selected.id) ? "Unsave place" : "Save place"} color={data.saved.includes(selected.id) ? colors.red : colors.ink} onPress={() => update((d) => ({ ...d, saved: toggleItem(d.saved, selected.id) }))} />}</View>
           </View> : null}
       </ScrollView>
-      {routing && snapIndex > 0 && selectedOption && <View style={{ paddingTop: 10, paddingBottom: Math.max(16, inset.bottom), borderTopWidth: 1, borderColor: colors.border }}><Action label="Start Navigation" disabled={selectedOption.coordinates.length < 2} onPress={() => startJourney(selectedOption)} /></View>}
-    </DraggableSheet>}
+      <View key="map-sheet-footer" collapsable={false} collapsableChildren={false} style={{ display: routing && snapIndex > 0 && selectedOption ? "flex" : "none", paddingTop: 10, paddingBottom: Math.max(16, inset.bottom), borderTopWidth: 1, borderColor: colors.border }}>{routing && snapIndex > 0 && selectedOption && <Action label="Start Navigation" disableAnimation disabled={selectedOption.coordinates.length < 2} onPress={() => startJourney(selectedOption)} />}</View>
+    </DraggableSheet>
     {searchOpen && <SearchOverlay query={searchText} onQueryChange={setSearchText} onClose={() => { setSearchOpen(false); Keyboard.dismiss(); router.setParams({ mode: "", voice: "" }); }} onSelect={(place) => { select(place); router.setParams({ mode: "", voice: "", place: "", sheet: "", arrived: "" }); }} />}
     {activeJourney && <JourneyOverlay journey={activeJourney} index={journeyIndex} onNext={() => setJourneyIndex((index) => Math.min(index + 1, activeJourney.steps.length - 1))} onExit={() => finishJourney()} />}
   </View>;

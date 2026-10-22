@@ -1,3 +1,4 @@
+import ResidentAvatar from "../components/ResidentAvatar";
 import { useState } from "react";
 import { View, type TextInputProps } from "react-native";
 import { CircleCheck, LockKeyhole, Pencil } from "lucide-react-native";
@@ -34,6 +35,7 @@ export default function ProfileDetails() {
     setEditing(true);
   };
   return <Page title={editing ? "Edit profile" : "Profile details"} back backTo="/profile" right={!editing ? <IconButton icon={Pencil} label="Edit profile" color={colors.red} onPress={beginEditing} style={{ borderWidth: 0, backgroundColor: "transparent" }} /> : undefined}>
+    <View style={{ alignItems: "center", paddingVertical: 8 }}><ResidentAvatar size={80} editable={editing} /></View>
     <Typography style={ui.label}>PERSONAL DETAILS</Typography>
     <Surface style={[ui.card, { padding: 0, gap: 0, overflow: "hidden" }]}>
       <ProfileField label="Preferred name" editing={editing} value={editing ? name : data.name} onChange={setName} />

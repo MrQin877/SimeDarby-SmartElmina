@@ -17,10 +17,10 @@ function harness() {
   let profile = { ...initialData, shortcuts: [] as shortcuts.ShortcutItem[] };
   let query = "";
   const jsx = (type: unknown, props: Node["props"]): Node => ({ type, props });
-  const animation = { duration: () => animation, easing: () => animation, withInitialValues: () => animation, reduceMotion: () => animation };
   const dependencies: Record<string, any> = {
-    "react-native-reanimated": { default: { View: "AnimatedView" }, FadeInUp: animation, Easing: { out: () => {}, cubic: () => {} }, ReduceMotion: { System: "system" } },
+    "react-native-reanimated": { default: { View: "AnimatedView" }, cancelAnimation() {}, useSharedValue: (value: number) => ({ value }), useAnimatedStyle: (fn: () => unknown) => fn(), withTiming: (value: number) => value, Easing: { out: () => {}, cubic: () => {} }, ReduceMotion: { System: "system" } },
     react: {
+      useEffect() {},
       useRef: (value: unknown) => ({ current: value }),
       useState: (initial: unknown) => {
         const index = cursor++;

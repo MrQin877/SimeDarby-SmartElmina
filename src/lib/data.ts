@@ -619,3 +619,20 @@ export function resolveRoadCorridor(id?: string, name?: string, coordinate?: Coo
   const road = matching || nearest;
   return { ...road, name: name || road.name, coordinate: coordinate || road.coordinate };
 }
+
+// Illustrative partner offers, not connected to merchant redemption systems.
+export const voucherCategories = [{ value: "explore", label: "All" }, { value: "transit", label: "Transit" }, { value: "food", label: "Dining" }, { value: "groceries", label: "Groceries" }, { value: "lifestyle", label: "Lifestyle" }] as const;
+export const vouchers: import("./rewards").Voucher[] = [
+  { id: "nursery", merchant: "ELMINA NURSERY", merchantIcon: "🌱", offer: "RM5 OFF", title: "A greener home", points: 90, category: "lifestyle", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/products-03.jpg", outlet: "Elmina nursery", description: "A little green for your living space.", terms: ["Illustrative resident offer.", "One use per voucher."] },
+  { id: "jaya", merchant: "JAYA GROCER", merchantIcon: "🛒", offer: "RM5.00 OFF", title: "Fresh Produce & Daily Groceries", points: 150, category: "groceries", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/products-03.jpg", outlet: "Elmina Lakeside Mall", description: "Make your next grocery visit a little more rewarding with this resident offer.", terms: ["Valid at the participating outlet listed above.", "One voucher per resident. Present it before payment.", "Not exchangeable for cash or combinable with other offers."] },
+  { id: "bask", merchant: "BASK BEAR", merchantIcon: "🐻", offer: "RM3.00 OFF", title: "Your Daily Coffee, On Us", points: 100, category: "food", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/intro.jpg", outlet: "Elmina Lakeside Mall", description: "Enjoy your next coffee break with an Eco-Pass resident reward.", terms: ["Valid at the participating outlet listed above.", "One voucher per resident. Selected beverages only.", "Not exchangeable for cash or combinable with other offers."] },
+  { id: "eco", merchant: "ECO-MOBILITY", merchantIcon: "🛺", offer: "FREE RIDE", title: "Central Park Buggy Experience", points: 75, category: "transit", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-grayscale@master/dist/assets/img/bg-masthead.jpg", outlet: "Central Park Pavilion", description: "Explore Central Park with a shared recreational buggy ride.", terms: ["Subject to availability and operating hours.", "One recreational ride per voucher.", "This illustrative offer is separate from Gold Tier privileges."] },
+  { id: "komugi", merchant: "KOMUGI", merchantIcon: "🥐", offer: "20% OFF", title: "Fresh Bakes & Sweet Moments", points: 120, category: "food", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/products-02.jpg", outlet: "Elmina Lakeside Mall", description: "Treat yourself to fresh bakes with a resident reward.", terms: ["Valid on selected bakery products at the listed outlet.", "One voucher per resident. Present it before payment.", "Not exchangeable for cash or combinable with other offers."] },
+];
+export const residentPerks = [
+  { icon: "bus", title: "Free Elmina EV Shuttle Feeder S1", detail: "Unlimited boarding with your resident QR." },
+  { icon: "zap", title: "15% off EV fast charging", detail: "Central Park & Temu Hub charging bays." },
+  { icon: "car", title: "Complimentary buggy service", detail: "Central Park recreational transit." },
+  { icon: "calendar", title: "Priority sports court booking", detail: "Book tennis and futsal up to 7 days ahead." },
+  { icon: "sprout", title: "10% off at Community Nursery", detail: "Native shrubs and trees for your home." },
+] as const;

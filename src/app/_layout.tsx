@@ -53,6 +53,11 @@ function Screens() {
         <Stack.Screen name="search" options={{ animation: "fade" }} />
         <Stack.Screen name="route" options={{ animation: "fade" }} />
         <Stack.Screen name="journey" options={{ animation: "fade" }} />
+        <Stack.Screen name="rewards" />
+        <Stack.Screen name="my-rewards" />
+        <Stack.Screen name="point-history" />
+        <Stack.Screen name="perks" />
+        <Stack.Screen name="voucher/[id]" />
         <Stack.Screen name="alerts" options={{ animation: "slide_from_right" }} />
       </Stack>
     </>

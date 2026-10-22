@@ -1,3 +1,5 @@
+import { restoreAvatarUri } from "./avatar";
+import { defaultRewardState, restoreRewards, type RewardState } from "./rewards";
 import { restoreShortcuts, type ShortcutItem } from "./shortcuts";
 
 export type Report = {
@@ -70,7 +72,7 @@ export type VisitorPass = {
   status: "active" | "used" | "expired";
 };
 
-export type LocalData = {
+export type LocalData = RewardState & {
   reports: Report[];
   comments: Comment[];
   liked: string[];
@@ -81,6 +83,7 @@ export type LocalData = {
   shortcuts: ShortcutItem[];
   name: string;
   fullName: string;
+  avatarUri: string | null;
   precinct: string;
   address: string;
   phone: string;
@@ -106,6 +109,7 @@ export type LocalData = {
 };
 
 export const initialData: LocalData = {
+  ...defaultRewardState,
   reports: [],
   comments: [],
   liked: [],
@@ -116,6 +120,7 @@ export const initialData: LocalData = {
   shortcuts: [],
   name: "Farhan",
   fullName: "Ahmad Farhan Bin Roslan",
+  avatarUri: null,
   precinct: "City of Elmina — Demo Precinct",
   address: "Elmina Valley 3, Persiaran Atmosfera",
   phone: "+60 12-345 6789",
@@ -164,6 +169,7 @@ export function restoreData(raw: string | null): LocalData {
   try {
     const d = JSON.parse(raw);
     return {
+      ...restoreRewards(d),
       reports: Array.isArray(d.reports)
         ? d.reports.filter(
             (r: Report) =>
@@ -189,6 +195,7 @@ export function restoreData(raw: string | null): LocalData {
       homePlaceId: typeof d.homePlaceId === "string" ? d.homePlaceId : null,
       shortcuts: restoreShortcuts(d.shortcuts),
       name: typeof d.name === "string" && d.name.trim() ? d.name : "Farhan",
+      avatarUri: restoreAvatarUri(d.avatarUri),
       fullName: typeof d.fullName === "string" ? d.fullName : initialData.fullName,
       precinct: typeof d.precinct === "string" ? d.precinct : initialData.precinct,
       address: typeof d.address === "string" ? d.address : initialData.address,

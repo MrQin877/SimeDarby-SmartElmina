@@ -37,7 +37,7 @@ export default function RoutingSheet({ mode, onModeChange, options, selectedId, 
   if (compact) return <View style={{ flexDirection: "row", gap: 12, alignItems: "center", minHeight: 58 }}>
     <ModeIcon size={18} color={colors.red} />
     <View style={{ flex: 1, gap: 3 }}><Typography style={[ui.heading, { fontSize: 15 }]}>{selected ? `${minutes(selected.duration)} min · ${distanceLabel(selected.distance)}` : "Choose locations"}</Typography><Typography numberOfLines={1} style={ui.muted}>{loading ? "Loading mapped route…" : selected?.title}</Typography></View>
-    {selected && <Button isDisabled={selected.coordinates.length < 2} onPress={() => onStart(selected)} style={{ minHeight: 44, paddingHorizontal: 14 }}><ArrowRight size={16} color={colors.white} /><Button.Label>Start</Button.Label></Button>}
+    {selected && <Button animation="disable-all" isDisabled={selected.coordinates.length < 2} onPress={() => onStart(selected)} style={{ minHeight: 44, paddingHorizontal: 14 }}><ArrowRight size={16} color={colors.white} /><Button.Label>Start</Button.Label></Button>}
   </View>;
   return <View style={{ gap: 16 }}>
     <LineTabs value={mode} onChange={(value) => onModeChange(value as TravelMode)} items={[

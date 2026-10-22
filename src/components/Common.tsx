@@ -48,7 +48,7 @@ export {
 };
 
 export function CloseButton(props: ComponentProps<typeof HeroCloseButton>) {
-  return <HeroCloseButton {...props} size="sm" iconProps={{ ...props.iconProps, size: 16 }} style={[props.style, { width: 28, height: 28, minWidth: 28, minHeight: 28, borderRadius: 14 }]} />;
+  return <HeroCloseButton {...props} animation="disable-all" size="sm" iconProps={{ ...props.iconProps, size: 16 }} style={[props.style, { width: 28, height: 28, minWidth: 28, minHeight: 28, borderRadius: 14 }]} />;
 }
 
 export function IconButton({

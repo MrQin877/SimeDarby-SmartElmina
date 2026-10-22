@@ -175,7 +175,7 @@ export const Button = Object.assign(
   },
 );
 
-export const CloseButton = (props: ComponentProps<typeof HeroCloseButton>) => <HeroCloseButton {...props} size="sm" iconProps={{ ...props.iconProps, size: 16 }} style={[props.style, { width: 28, height: 28, minWidth: 28, minHeight: 28, borderRadius: 14 }]} />;
+export const CloseButton = (props: ComponentProps<typeof HeroCloseButton>) => <HeroCloseButton {...props} animation="disable-all" size="sm" iconProps={{ ...props.iconProps, size: 16 }} style={[props.style, { width: 28, height: 28, minWidth: 28, minHeight: 28, borderRadius: 14 }]} />;
 
 export const Chip = Object.assign(
   ({
@@ -250,11 +250,11 @@ export const Avatar = Object.assign(
       style,
       textProps,
     }: ViewProps & { textProps?: TextProps }) => (
-      <View style={[{ alignItems: "center", justifyContent: "center" }, style]}>
+      <View style={[{ alignItems: "center", justifyContent: "center", overflow: "visible" }, style]}>
         {typeof children === "string" ? (
           <RNText
-            style={[{ color: colors.red, fontWeight: "700" }, textProps?.style]}
             {...textProps}
+            style={[{ color: colors.red, fontWeight: "700", includeFontPadding: false, lineHeight: 28, textAlign: "center", textAlignVertical: "center" }, textProps?.style]}
           >
             {children}
           </RNText>
