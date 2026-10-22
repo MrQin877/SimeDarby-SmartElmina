@@ -10,7 +10,11 @@ export default function RoadCorridorContent({ corridor = roadCorridors[0], onPla
   const factor = corridor.tone === "green" ? 0.4 : corridor.tone === "amber" ? 0.7 : 1;
   const selected = hourlyTrafficData.find((item) => item.hour === hour)!;
   return <View style={{ gap: 16 }}>
-    <View style={{ gap: 6 }}><Badge tone={corridor.tone}>{corridor.status} · demo</Badge><DemoNote text="Road corridor telemetry · simulated sensor readings" /></View>
+    <View style={{ gap: 6 }}>
+      <Typography.Heading type="h2" style={[ui.heading, { fontSize: 20 }]}>{corridor.name}</Typography.Heading>
+      <Badge tone={corridor.tone}>{corridor.status} · demo</Badge>
+      <DemoNote text="Road corridor telemetry · simulated sensor readings" />
+    </View>
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
       {[
         ["Speed limit", `${corridor.speedLimit} km/h`], ["Average speed", `${corridor.speed} km/h`],

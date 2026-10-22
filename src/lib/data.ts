@@ -110,6 +110,36 @@ export const places: Place[] = [
   { id: "temu-hub", name: "Temu Commercial Hub", subtitle: "Persiaran Atmosfera", coordinate: [101.5099, 3.18133], kind: "place", searchCategory: "Shopping", searchStatus: "Stores open · sample" },
   { id: "rainbow-bridge", name: "Elmina Central Park & Rainbow Bridge", subtitle: "Park & recreation · City of Elmina", coordinate: [101.51425, 3.17901], kind: "place", searchCategory: "Recreation", searchStatus: "Open 24 hours · sample" },
   { id: "home-valley-3", name: "Elmina Valley 3", subtitle: "Home · illustrative township location", coordinate: CENTER, kind: "place", searchCategory: "Home" },
+  {
+    id: "elmina-valley",
+    name: "Elmina Valley",
+    subtitle: "Home · Persiaran Atmosfera, Precinct 1",
+    address: "Jalan Casuarina, Elmina Valley, 40160 Shah Alam, Selangor",
+    coordinate: [101.5142, 3.1790],
+    kind: "place",
+    searchCategory: "Home",
+    searchStatus: "Aiman's Residence · Elmina Valley",
+  },
+  {
+    id: "elmina-city-centre",
+    name: "Elmina City Centre",
+    subtitle: "Commercial & Business Hub · Persiaran Elmina",
+    address: "Persiaran Elmina, Elmina City Centre, 40160 Shah Alam, Selangor",
+    coordinate: [101.5035, 3.1875],
+    kind: "place",
+    searchCategory: "Work",
+    searchStatus: "Offices & Corporate Hub · open",
+  },
+  {
+    id: "closure-persiaran-elmina",
+    name: "Road Closure · Persiaran Elmina",
+    subtitle: "Road Resurfacing & Maintenance · 7:00 AM – 11:00 AM",
+    address: "Selected section of Persiaran Elmina approaching Elmina City Centre",
+    coordinate: [101.5085, 3.1845],
+    kind: "hazard",
+    detail:
+      "Temporary road closure by Township Management today, 23 October 2026 (7:00 AM – 11:00 AM) for road resurfacing and maintenance. Motorists traveling to Elmina City Centre are advised to use the Elmina West Bypass or Persiaran Atmosfera.",
+  },
 ];
 export const filters: MapFilter[] = ["Traffic", "Transport", "Hazards", "CCTV"];
 export function visiblePlaces(filter: MapFilter): Place[] {
@@ -126,7 +156,7 @@ export function searchPlaces(query: string) {
   return places.filter(
     (p) =>
       (p.kind === "place" || p.id === "atmosfera-stop") &&
-      `${p.name} ${p.subtitle}`.toLocaleLowerCase().includes(q),
+      `${p.name} ${p.subtitle} ${p.searchCategory || ""}`.toLocaleLowerCase().includes(q),
   );
 }
 export type Announcement = {
@@ -153,25 +183,29 @@ export type Announcement = {
 export const announcements: Announcement[] = [
   {
     id: "ann-01",
-    title: "Persiaran Atmosfera Eastbound Closure & S1 Adjustment",
+    title: "Temporary Road Closure Along Persiaran Elmina",
     category: "Roads",
-    body: "Roadworks between Valley Gate and Central Park from Oct 24–28. Feeder Bus S1 rerouted to Lakeside Bay shelter.",
+    body: "Road resurfacing and maintenance by Township Management along Persiaran Elmina today, 23 October 2026 (7:00 AM – 11:00 AM). Selected section approaching Elmina City Centre is closed.",
     time: "Today, 7:30 AM",
-    reactions: 38,
-    placeId: "entrance",
+    reactions: 54,
+    placeId: "closure-persiaran-elmina",
     icon: "road",
     priority: "high",
-    source: "Sime Darby Property Township Management",
-    dateStr: "Oct 24–28, 2026",
-    summary: "Roadworks between Valley Gate and Central Park from Oct 24–28. Feeder Bus S1 rerouted to Lakeside Bay.",
-    content: "Essential culvert and drainage enhancement along the eastbound corridor. Gate 3 Lane 1 temporary bypass active with traffic wardens on duty.",
-    impactArea: "Persiaran Atmosfera, opposite Lakeside Promenade roundabout.",
+    source: "Township Management",
+    dateStr: "23 October 2026 · 7:00 AM – 11:00 AM",
+    imageUrl: "/road-closure.jpg",
+    summary: "Temporary road closure along Persiaran Elmina approaching Elmina City Centre for road resurfacing and maintenance (7:00 AM – 11:00 AM).",
+    content: "Township Management wishes to inform residents that road resurfacing and maintenance works will be carried out along a selected section of Persiaran Elmina approaching Elmina City Centre today, Friday, 23 October 2026, between 7:00 AM and 11:00 AM.\n\nTraffic management teams and auxiliary wardens are stationed to guide traffic flow. Commuters heading from Elmina Valley towards Elmina City Centre are advised to review alternative routes in the Journey Planner or use the Elmina West Bypass.",
+    impactArea: "Selected section of Persiaran Elmina approaching Elmina City Centre",
     residentSteps: [
-      "Eastbound lanes closed strictly between 9:00 AM – 4:00 PM daily.",
-      "Clear directional signboards and auxiliary wardens stationed.",
-      "Bus S1 pickup shifted 120m south to Lakeside Bay shelter."
+      "Closure period: 7:00 AM – 11:00 AM on 23 October 2026.",
+      "Reason: Road resurfacing and maintenance.",
+      "Detour: Use Persiaran Atmosfera or Elmina West Bypass towards Elmina City Centre.",
+      "Plan extra 10–12 minutes buffer during morning commute.",
+      "Feeder Bus S1 runs on dedicated priority bypass lanes."
     ],
-    actionText: "View Route in Map",
+    actionText: "Open Journey Planner",
+    actionLink: "/(tabs)/explore?sheet=plan_journey&origin=elmina-valley&destination=elmina-city-centre",
   },
   {
     id: "ann-02",
@@ -311,6 +345,21 @@ export const initialDiscussions: DiscussionPost[] = [
 ];
 
 export const initialAlerts: AlertItem[] = [
+  {
+    id: "alt-road-closure",
+    title: "🚧 Road Closure: Persiaran Elmina",
+    subtitle: "Road resurfacing & maintenance · 7:00 AM – 11:00 AM today",
+    source: "Township Management",
+    timestamp: "Today, 7:30 AM",
+    type: "mobility",
+    badgeLabel: "Road Advisory",
+    content: "Township Management has temporarily closed a selected section of Persiaran Elmina approaching Elmina City Centre for road resurfacing. Please review detour options in Journey Planner.",
+    isRead: false,
+    isImportant: true,
+    isAcknowledged: false,
+    actionType: "mobility_link",
+    actionLabel: "Open Journey Planner",
+  },
   {
     id: "alt-01",
     title: "Severe Thunderstorm & Flash Ponding Warning",
@@ -606,6 +655,19 @@ export interface RoadCorridor {
   advisory: string;
 }
 export const roadCorridors: RoadCorridor[] = [
+  {
+    id: "persiaran-elmina",
+    name: "Persiaran Elmina",
+    coordinate: [101.5085, 3.1845],
+    speedLimit: 60,
+    speed: 6,
+    delay: 15,
+    queue: 650,
+    throughput: 12,
+    status: "Road Resurfacing / Closed",
+    tone: "red",
+    advisory: "Selected section approaching Elmina City Centre is closed for resurfacing (7:00 AM – 11:00 AM). AI Journey Planner advises diverting via Elmina West Bypass or Persiaran Atmosfera."
+  },
   { id: "gce", name: "GCE Exit 3502", coordinate: [101.515847, 3.174127], speedLimit: 80, speed: 14, delay: 12, queue: 450, throughput: 78, status: "Heavy congestion", tone: "red", advisory: "Compare the Elmina West bypass before departing. Allow an extra 12 minutes in this simulation." },
   { id: "atmosfera", name: "Persiaran Atmosfera", coordinate: [101.512122, 3.173294], speedLimit: 60, speed: 38, delay: 6, queue: 180, throughput: 46, status: "Moderate congestion", tone: "amber", advisory: "Merging traffic is slowing this corridor. Compare route options and leave extra travel time." },
   { id: "central-park", name: "Central Park Boulevard", coordinate: [101.509225, 3.177905], speedLimit: 50, speed: 45, delay: 0, queue: 0, throughput: 18, status: "Smooth flow", tone: "green", advisory: "Park access is clear in this simulation. Follow the posted speed and give way at pedestrian crossings." },
@@ -614,7 +676,7 @@ export function resolveRoadCorridor(id?: string, name?: string, coordinate?: Coo
   const exact = roadCorridors.find((road) => road.id === id);
   if (exact) return { ...exact, coordinate: coordinate || exact.coordinate };
   const label = name?.toLowerCase() || "";
-  const matching = roadCorridors.find((road) => label.includes(road.name.toLowerCase()) || (road.id === "gce" && /gce|e35/.test(label)) || (road.id === "atmosfera" && label.includes("atmosfera")));
+  const matching = roadCorridors.find((road) => label.includes(road.name.toLowerCase()) || (road.id === "persiaran-elmina" && (label.includes("persiaran elmina") || label.includes("elmina city centre") || label.includes("resurfacing"))) || (road.id === "gce" && /gce|e35/.test(label)) || (road.id === "atmosfera" && label.includes("atmosfera")));
   const nearest = coordinate ? [...roadCorridors].sort((a, b) => Math.hypot(a.coordinate[0] - coordinate[0], a.coordinate[1] - coordinate[1]) - Math.hypot(b.coordinate[0] - coordinate[0], b.coordinate[1] - coordinate[1]))[0] : roadCorridors[0];
   const road = matching || nearest;
   return { ...road, name: name || road.name, coordinate: coordinate || road.coordinate };

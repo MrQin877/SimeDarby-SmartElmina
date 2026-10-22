@@ -32,7 +32,7 @@ type SheetMode = "place" | "traffic_details" | "plan_journey" | "shuttle";
 const defaultDestination = places.find((place) => place.id === "kwasa-hub")!;
 const currentLocation: Place = { id: "current-location", name: "Current Location", subtitle: "Demo starting point until GPS is enabled", coordinate: CENTER, kind: "place" };
 function modeForPlace(place: Place): SheetMode {
-  return place.id === "bottleneck-gce" ? "traffic_details" : place.kind === "transport" ? "shuttle" : "place";
+  return place.id === "bottleneck-gce" || place.id === "closure-persiaran-elmina" || place.kind === "hazard" ? "traffic_details" : place.kind === "transport" ? "shuttle" : "place";
 }
 
 export default function Explore() {
@@ -40,7 +40,20 @@ export default function Explore() {
   const [layer, setLayer] = useState<MapLayer>("all");
   const [layersOpen, setLayersOpen] = useState(false);
   const inset = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ place?: string; sheet?: string; arrived?: string; mode?: string; voice?: string; resume?: string; lng?: string; lat?: string; name?: string }>();
+  const params = useLocalSearchParams<{
+    place?: string;
+    sheet?: string;
+    arrived?: string;
+    mode?: string;
+    voice?: string;
+    resume?: string;
+    lng?: string;
+    lat?: string;
+    name?: string;
+    origin?: string;
+    destination?: string;
+    corridor?: string;
+  }>();
   const { data, update } = useStore();
   const [mapHeight, setMapHeight] = useState(700);
   const [snapIndex, setSnapIndex] = useState(1);
@@ -93,6 +106,14 @@ export default function Explore() {
       router.setParams({ arrived: "" });
       setSheetMode(null); setSelected(null); return;
     }
+    if (params.origin) {
+      const orig = places.find((p) => p.id === params.origin || p.name.toLowerCase().includes(params.origin!.toLowerCase()));
+      if (orig) { setOrigin(orig); setOriginText(orig.name); }
+    }
+    if (params.destination) {
+      const dest = places.find((p) => p.id === params.destination || p.name.toLowerCase().includes(params.destination!.toLowerCase()));
+      if (dest) { setDestination(dest); setDestinationText(dest.name); setSelected(dest); }
+    }
     const rawPlace = [...places, ...elminaBusStops].find((item) => item.id === params.place);
     const place = rawPlace ? canonicalShuttlePlace(rawPlace) : undefined;
     if (place) {
@@ -102,26 +123,38 @@ export default function Explore() {
     if (params.sheet === "plan_journey") {
       setSheetMode("plan_journey"); setSnapIndex(1); setTravelMode("drive");
     } else if (params.sheet === "traffic_details") {
-      const road = places.find((item) => item.id === "bottleneck-gce")!;
-      setSelected(road); setCenter(road.coordinate); setCorridor(roadCorridors[0]); setSheetMode("traffic_details"); setSnapIndex(1);
+      const targetCorridor = roadCorridors.find(c => c.id === params.corridor) || (params.place === "closure-persiaran-elmina" ? roadCorridors.find(c => c.id === "persiaran-elmina") : roadCorridors[0]) || roadCorridors[0];
+      const targetPlaceId = params.place || (params.corridor === "persiaran-elmina" ? "closure-persiaran-elmina" : "bottleneck-gce");
+      const road = places.find((item) => item.id === targetPlaceId) || places.find((item) => item.id === "bottleneck-gce")!;
+      setSelected(road); setCenter(road.coordinate); setCorridor(targetCorridor); setSheetMode("traffic_details"); setSnapIndex(1);
     } else if (params.sheet === "shuttle") {
       const stop = place?.kind === "transport" ? place : elminaBusStops[0];
       setSelected(stop); setCenter(stop.coordinate); setSheetMode("shuttle"); setSnapIndex(1);
     } else if (place) setSheetMode(modeForPlace(place));
-  }, [params.sheet, params.place, params.arrived, params.mode, params.resume, params.lng, params.lat, params.name, notify]);
+  }, [params.sheet, params.place, params.arrived, params.mode, params.resume, params.lng, params.lat, params.name, params.origin, params.destination, params.corridor, notify]);
 
   const select = (target: Place) => {
     setManagedReminderId(null);
     const place = canonicalShuttlePlace(target);
     setSelected(place); setCenter(place.coordinate); setSnapIndex(1); setEditing(null); setLayersOpen(false); setSearchOpen(false); Keyboard.dismiss();
-    if (place.id === "bottleneck-gce") setCorridor(roadCorridors[0]);
+    if (place.id === "bottleneck-gce") setCorridor(roadCorridors.find(c => c.id === "gce") || roadCorridors[0]);
+    if (place.id === "closure-persiaran-elmina") setCorridor(roadCorridors.find(c => c.id === "persiaran-elmina") || roadCorridors[0]);
     if (place.kind === "place") {
       setDestination(place); setDestinationText(place.name); setRouteId(undefined);
       if (!routing) setSheetMode("place");
     } else setSheetMode(modeForPlace(place));
   };
   const enterRouting = (place?: Place) => {
-    const target = place?.kind === "place" ? place : destination || defaultDestination;
+    let target = place?.kind === "place" ? place : destination || defaultDestination;
+    if (corridor.id === "persiaran-elmina" || selected?.id === "closure-persiaran-elmina") {
+      const elminaValley = places.find(p => p.id === "elmina-valley");
+      const elminaCityCentre = places.find(p => p.id === "elmina-city-centre");
+      if (elminaValley && elminaCityCentre) {
+        setOrigin(elminaValley);
+        setOriginText(elminaValley.name);
+        target = elminaCityCentre;
+      }
+    }
     setSearchOpen(false); setDestination(target); setDestinationText(target.name); setSelected(target);
     setSheetMode("plan_journey"); setSnapIndex(1); setEditing(null); setRouteId(undefined); setTravelMode("drive");
   };

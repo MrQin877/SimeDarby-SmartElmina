@@ -114,7 +114,7 @@ export default function TownshipMap({
         </GeoJSONSource>}
         {routeOptions?.filter((option) => lineFeature(option.coordinates, option.segments).features.length > 0).map((option) => <GeoJSONSource key={option.id} id={`option-${option.id}`} data={lineFeature(option.coordinates, option.segments)} hitbox={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={(event) => { event.stopPropagation(); onRouteSelect?.(option.id); }}>
           <Layer id={`option-casing-${option.id}`} type="line" paint={{ "line-color": colors.white, "line-width": option.id === selectedRouteId ? 11 : 8 }} />
-          <Layer id={`option-line-${option.id}`} type="line" paint={{ "line-color": option.id === selectedRouteId ? colors.red : "#9CA3AF", "line-width": option.id === selectedRouteId ? 7 : 5 }} layout={{ "line-cap": "round", "line-join": "round" }} />
+          <Layer id={`option-line-${option.id}`} type="line" paint={{ "line-color": option.id === selectedRouteId ? (option.id.startsWith("transit") ? colors.blue : option.id.startsWith("walk") ? colors.green : colors.red) : "#9CA3AF", "line-width": option.id === selectedRouteId ? 7 : 5 }} layout={{ "line-cap": "round", "line-join": "round" }} />
         </GeoJSONSource>)}
         {route && lineFeature(route).features.length > 0 && (
           <GeoJSONSource id="route" data={lineFeature(route)}>

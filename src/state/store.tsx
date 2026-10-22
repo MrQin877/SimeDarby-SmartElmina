@@ -11,7 +11,7 @@ import {
 import { initialData, restoreData, type LocalData } from "../lib/model";
 import { recordBoarding, recordPayment, consumeRewardVoucher, redeemReward, type RewardResult } from "../lib/rewards";
 import { linkDemoCard, linkDemoWallet, removePaymentMethod, selectPaymentMethod, type CardDraft } from "../lib/payments";
-const KEY = "townshipconnect.demo.v1";
+const KEY = "townshipconnect.demo.v2";
 type Store = {
   data: LocalData;
   ready: boolean;

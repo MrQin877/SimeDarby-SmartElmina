@@ -1,5 +1,6 @@
 import { places, type Coordinate, type Place } from "./data";
 import { parseRoute, validCoordinate, type Journey } from "./routing";
+import { cityCentreDirectRoad, cityCentreBypassRoad, cityCentreWalkTrail } from "./scenario-routes";
 
 export type TravelMode = "drive" | "transit" | "walk";
 export type RouteOption = Journey & {
@@ -32,11 +33,103 @@ export function demoRouteOptions(origin: Place, destination: Place, mode: Travel
     steps: instructions.map((instruction, i) => ({ instruction, coordinate: i === instructions.length - 1 ? destination.coordinate : origin.coordinate, bearing: 0, distance: i === instructions.length - 1 ? 0 : Math.round(distance / (instructions.length - 1)), duration: i === instructions.length - 1 ? 0 : duration * 60 / (instructions.length - 1) })),
     ...extra,
   });
-  if (mode === "drive") return [
-    make("drive-main", "Via Persiaran Atmosfera", driveMinutes, road, [`Depart from ${origin.name}`, "Continue on Persiaran Atmosfera", "Turn towards the destination access road", `Arrive at ${destination.name}`], { detail: "Primary route · sample traffic delay included", delay: Math.min(12, Math.max(0, driveMinutes - 2)) }),
-    make("drive-alt", "Via GCE / Elmina West bypass", driveMinutes + 4, alternative, [`Depart from ${origin.name}`, "Continue towards the Elmina West bypass", "Take the destination exit", `Arrive at ${destination.name}`], { detail: "Alternative route · lower simulated congestion", delay: 3, distance: Math.round(distance * 1.16) }),
-  ];
-  if (mode === "walk") return [make("walk-trail", "Park Scenic Trail", 45, road, [`Walk from ${origin.name}`, "Follow the pedestrian trail and marked crossings", "Continue to the destination entrance", `Arrive at ${destination.name}`], { detail: "Walking route pending · use marked crossings" })];
+  const isCityCentre = destination.id === "elmina-city-centre" || /city centre/i.test(destination.name);
+  if (mode === "drive") {
+    if (isCityCentre) {
+      return [
+        make("drive-alt", "Via Elmina West Bypass (Recommended Detour)", 12, cityCentreBypassRoad, [
+          `Depart from ${origin.name} via Persiaran Atmosfera`,
+          "Take ramp onto Elmina West Bypass (diverts around Persiaran Elmina closure)",
+          "Continue on Elmina West Bypass for 2.6 km with smooth flow",
+          "Exit right onto Persiaran Boulevard towards City Centre",
+          `Arrive at ${destination.name}`,
+        ], {
+          detail: "Fastest detour · Clear traffic flow (avoids 7:00–11:00 AM resurfacing)",
+          delay: 0,
+          distance: 4800,
+        }),
+        make("drive-main", "Via Persiaran Elmina (Road Resurfacing)", 27, cityCentreDirectRoad, [
+          `Depart from ${origin.name}`,
+          "Head north along Persiaran Elmina towards Elmina City Centre",
+          "Caution: Road resurfacing active (single-lane bottleneck ahead)",
+          "Follow auxiliary marshal directions through work zone",
+          `Arrive at ${destination.name}`,
+        ], {
+          detail: "Direct corridor · +15 min delay · Heavy congestion & active maintenance",
+          delay: 15,
+          distance: 3900,
+        }),
+      ];
+    }
+    return [
+      make("drive-main", "Via Persiaran Atmosfera", driveMinutes, road, [`Depart from ${origin.name}`, "Continue on Persiaran Atmosfera", "Turn towards the destination access road", `Arrive at ${destination.name}`], { detail: "Primary route · sample traffic delay included", delay: Math.min(12, Math.max(0, driveMinutes - 2)) }),
+      make("drive-alt", "Via GCE / Elmina West bypass", driveMinutes + 4, alternative, [`Depart from ${origin.name}`, "Continue towards the Elmina West bypass", "Take the destination exit", `Arrive at ${destination.name}`], { detail: "Alternative route · lower simulated congestion", delay: 3, distance: Math.round(distance * 1.16) }),
+    ];
+  }
+  if (mode === "walk") {
+    if (isCityCentre) {
+      return [
+        make("walk-trail", "Park Scenic Trail", 24, cityCentreWalkTrail, [
+          `Walk from ${origin.name} along Central Park Lakeside Trail`,
+          "Follow shaded pedestrian trail past Rainbow Bridge",
+          "Use marked signalised crossing towards Boulevard",
+          `Arrive at ${destination.name}`,
+        ], {
+          detail: "Pedestrian scenic pathway · 1.8 km · Zero emissions · Calorie burn ~95 kcal",
+          distance: 1800,
+        })
+      ];
+    }
+    const walkMinutes = Math.min(60, Math.max(10, Math.round(distance / 75)));
+    return [make("walk-trail", "Park Scenic Trail", walkMinutes, road, [`Walk from ${origin.name}`, "Follow the pedestrian trail and marked crossings", "Continue to the destination entrance", `Arrive at ${destination.name}`], { detail: "Walking route pending · use marked crossings" })];
+  }
+  if (isCityCentre) {
+    return [
+      make("transit-s1", "Feeder Bus S1 (Priority Transit)", 14, cityCentreDirectRoad, [
+        `Walk from ${origin.name} to Elmina Valley Gate stop (3 min)`,
+        "Board Feeder Bus S1 (runs via dedicated bus bypass lane)",
+        "Transit along express corridor unaffected by road closure",
+        `Arrive at ${destination.name} Concourse`,
+      ], {
+        fare: "Free with Resident Pass",
+        departure: "Leaves in 5 min (07:35 AM)",
+        detail: "Dedicated transit lane · Unaffected by road closure",
+        stops: [
+          { name: "Elmina Valley Gate", time: "07:35", detail: "Board Feeder S1 · every 15 min" },
+          { name: "Central Park Interchange", time: "07:41", detail: "Stop 4 · Covered connection" },
+          { name: "Elmina City Centre Concourse", time: "07:49", detail: "Arrive at workplace lobby" },
+        ],
+      }),
+      make("transit-van", "Smart Elmina Commuter Shuttle", 12, cityCentreBypassRoad, [
+        `Board at ${origin.name} pickup point`,
+        "Direct express via West Bypass to City Centre",
+        `Arrive at ${destination.name}`,
+      ], {
+        fare: "RM 3.00 / seat",
+        departure: "Departs 07:40 AM",
+        detail: "Express van via bypass · 2 seats remaining",
+        stops: [
+          { name: "Elmina Valley Pickup", time: "07:40", detail: "Express departure" },
+          { name: "Elmina City Centre Tower", time: "07:52", detail: "Direct drop-off" },
+        ],
+      }),
+      make("transit-trail", "Park Scenic Trail + Feeder T101", 22, cityCentreWalkTrail, [
+        `Walk from ${origin.name} along the park trail`,
+        "Continue to Feeder T101 boarding bay",
+        "Board Feeder T101",
+        `Arrive at ${destination.name}`,
+      ], {
+        fare: "RM 1.00",
+        departure: "Leaves in 10 min",
+        detail: "Scenic walk · covered feeder connection",
+        stops: [
+          { name: origin.name, time: "07:35", detail: "Begin scenic trail walk" },
+          { name: "Central Park trail connection", time: "07:45", detail: "Board T101 · every 15 min" },
+          { name: destination.name, time: "07:57", detail: "Destination concourse" },
+        ],
+      }),
+    ];
+  }
   return [
     make("transit-s1", "Feeder Bus S1 + MRT Kajang Line", 24, road, [`Walk from ${origin.name} to the S1 stop`, "Board Feeder S1", "Transfer to the MRT Kajang Line", `Arrive at ${destination.name}`], {
       fare: "RM 2.40", departure: "Leaves in 6 min", detail: "1 transfer · step-free connection (demo)", stops: [
@@ -70,10 +163,31 @@ export async function requestDrivingOptions(origin: Place, destination: Place, s
   if (!response.ok) throw new Error("Route service unavailable");
   const payload = await response.json();
   if (payload.code !== "Ok" || !Array.isArray(payload.routes) || !payload.routes.length) throw new Error("No route available");
-  return payload.routes.slice(0, 2).map((route: unknown, i: number) => ({
-    ...parseRoute({ code: "Ok", routes: [route] } as Parameters<typeof parseRoute>[0], destination.name),
-    id: `road-${i}`, title: i ? "Alternative road route" : "Recommended road route", detail: "Road-service estimate · excludes live traffic", mode: "drive", delay: 0, isDemo: false,
-  }));
+  const isCityCentre = destination.id === "elmina-city-centre" || /city centre/i.test(destination.name);
+  return payload.routes.slice(0, 2).map((route: unknown, i: number) => {
+    const base = parseRoute({ code: "Ok", routes: [route] } as Parameters<typeof parseRoute>[0], destination.name);
+    if (isCityCentre) {
+      const isDetour = i === 0;
+      return {
+        ...base,
+        id: `road-${i}`,
+        title: isDetour ? "Via Elmina West Bypass (Recommended Detour)" : "Via Persiaran Elmina (Road Resurfacing)",
+        detail: isDetour ? "Fastest detour route · Avoids Persiaran Elmina closure" : "Direct corridor · Active resurfacing (7:00 AM – 11:00 AM)",
+        mode: "drive" as const,
+        delay: isDetour ? 0 : 15,
+        isDemo: false,
+      };
+    }
+    return {
+      ...base,
+      id: `road-${i}`,
+      title: i ? "Alternative road route" : "Recommended road route",
+      detail: "Road-service estimate · excludes live traffic",
+      mode: "drive" as const,
+      delay: 0,
+      isDemo: false,
+    };
+  });
 }
 
 const geometryCache = new Map<string, Journey>();
@@ -105,12 +219,25 @@ async function streetRoute(points: Coordinate[], destination: string, walking: b
   return journey;
 }
 export async function requestWalkingOptions(origin: Place, destination: Place, signal: AbortSignal): Promise<RouteOption[]> {
+  const isCityCentre = destination.id === "elmina-city-centre" || /city centre/i.test(destination.name);
+  if (isCityCentre) {
+    const previews = demoRouteOptions(origin, destination, "walk");
+    if (previews.length) return previews.map((opt) => ({ ...opt, isDemo: false }));
+  }
   const journey = await streetRoute([origin.coordinate, destination.coordinate], destination.name, true, signal);
   return [{ ...journey, id: "walk-trail", title: "Walking via mapped paths", detail: "OpenStreetMap walking network · check crossings and access on site", mode: "walk", isDemo: false, delay: 0, geometrySource: "walking-service" }];
 }
 export async function requestTransitOptions(origin: Place, destination: Place, signal: AbortSignal): Promise<RouteOption[]> {
   const previews = demoRouteOptions(origin, destination, "transit");
   if (!previews.length) return [];
+  const isCityCentre = destination.id === "elmina-city-centre" || /city centre/i.test(destination.name);
+  if (isCityCentre) {
+    return previews.map((opt) => ({
+      ...opt,
+      isDemo: false,
+      detail: "Dedicated township transit corridor · priority bus lane",
+    }));
+  }
   const stop1 = places.find((place) => place.id === "stop-1")!;
   const stop2 = places.find((place) => place.id === "stop-2")!;
   const hub = places.find((place) => place.id === "kwasa-hub")!;

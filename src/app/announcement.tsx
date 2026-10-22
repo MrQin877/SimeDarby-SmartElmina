@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { View, Share } from "react-native";
+import { View, Share, Image } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ChevronRight,
   MapPin,
   Share2,
 } from "lucide-react-native";
@@ -15,7 +14,6 @@ import {
   IconButton,
   Label,
   Page,
-  PressableFeedback,
   Surface,
   TextArea,
   TextField,
@@ -84,6 +82,15 @@ export default function AnnouncementScreen() {
           {post.title}
         </Typography.Heading>
 
+        {post.imageUrl ? (
+          <Image
+            source={{ uri: post.imageUrl }}
+            accessibilityLabel={post.title}
+            style={{ width: "100%", height: 210, borderRadius: radius.card, marginVertical: 4 }}
+            resizeMode="cover"
+          />
+        ) : null}
+
         <Typography style={[ui.body, { fontSize: 14, color: colors.ink, lineHeight: 22 }]}>
           {post.content || post.body}
         </Typography>
@@ -93,30 +100,48 @@ export default function AnnouncementScreen() {
           <Surface
             variant="secondary"
             style={{
-              padding: 12,
+              padding: 14,
               borderRadius: radius.card,
               backgroundColor: colors.surfaceSecondary,
-              gap: 4,
+              gap: 8,
             }}
           >
             <View style={[ui.row, { gap: 6 }]}>
               <MapPin size={15} color={colors.red} />
               <Typography style={{ fontSize: 12, fontFamily: fonts.bold, fontWeight: "700", color: colors.ink }}>
-                Impact Area
+                Impact Area & Closure Period
               </Typography>
             </View>
-            <Typography style={{ fontSize: 12, color: colors.ink, lineHeight: 18 }}>
+            <Typography style={{ fontSize: 13, color: colors.ink, lineHeight: 19 }}>
               {post.impactArea}
             </Typography>
-            <PressableFeedback
-              onPress={() => router.push("/(tabs)/explore?sheet=traffic_details")}
-              style={[ui.row, { gap: 4, marginTop: 4 }]}
-            >
-              <Typography style={{ fontSize: 12, fontFamily: fonts.bold, fontWeight: "700", color: colors.red }}>
-                View Detour on Map
+            {post.dateStr && (
+              <Typography style={{ fontSize: 12, color: colors.muted, lineHeight: 17 }}>
+                🕒 {post.dateStr}
               </Typography>
-              <ChevronRight size={14} color={colors.red} />
-            </PressableFeedback>
+            )}
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <Button
+                size="sm"
+                variant="primary"
+                onPress={() => router.push(post.actionLink ? (post.actionLink as any) : "/(tabs)/explore?sheet=plan_journey&origin=elmina-valley&destination=elmina-city-centre")}
+                style={{ flex: 1, backgroundColor: colors.red, borderRadius: radius.md }}
+              >
+                <Button.Label style={{ color: colors.white, fontSize: 12 }}>
+                  {post.actionText || "Open Journey Planner"}
+                </Button.Label>
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={() => router.push("/(tabs)/explore?place=closure-persiaran-elmina&sheet=traffic_details&corridor=persiaran-elmina")}
+                style={{ flex: 1, borderRadius: radius.md }}
+              >
+                <Button.Label style={{ color: colors.ink, fontSize: 12 }}>
+                  View Map Detour
+                </Button.Label>
+              </Button>
+            </View>
           </Surface>
         ) : null}
 

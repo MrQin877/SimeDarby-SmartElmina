@@ -30,6 +30,33 @@ export default function RoutingSheet({ mode, onModeChange, options, selectedId, 
   const [details, setDetails] = useState<string | null>(null);
   useEffect(() => setDetails(null), [mode, options]);
   const selected = options.find((option) => option.id === selectedId) || options[0];
+  const isCityCentre = destination?.id === "elmina-city-centre" || /city centre/i.test(destination?.name || "");
+  const defaultDriveMinutes = isCityCentre ? "5" : "14";
+  const defaultTransitMinutes = isCityCentre ? "14" : "24";
+  const defaultWalkMinutes = isCityCentre ? "24" : "45";
+
+  const [cachedDurations, setCachedDurations] = useState<Partial<Record<TravelMode, string>>>({
+    drive: defaultDriveMinutes,
+    transit: defaultTransitMinutes,
+    walk: defaultWalkMinutes,
+  });
+
+  useEffect(() => {
+    setCachedDurations((prev) => ({
+      ...prev,
+      drive: prev.drive || defaultDriveMinutes,
+      transit: prev.transit || defaultTransitMinutes,
+      walk: prev.walk || defaultWalkMinutes,
+    }));
+  }, [destination?.id, defaultDriveMinutes, defaultTransitMinutes, defaultWalkMinutes]);
+
+  useEffect(() => {
+    if (selected?.duration) {
+      const minStr = String(minutes(selected.duration));
+      setCachedDurations((prev) => (prev[mode] === minStr ? prev : { ...prev, [mode]: minStr }));
+    }
+  }, [mode, selected?.duration]);
+
   const reserveVan = () => update((d) => {
     if (!d.isVanReserved && d.vanSeatsRemaining <= 0) return d;
     return { ...d, isVanReserved: !d.isVanReserved, vanSeatsRemaining: Math.max(0, d.vanSeatsRemaining + (d.isVanReserved ? 1 : -1)) };
@@ -42,9 +69,9 @@ export default function RoutingSheet({ mode, onModeChange, options, selectedId, 
   </View>;
   return <View style={{ gap: 16 }}>
     <LineTabs value={mode} onChange={(value) => onModeChange(value as TravelMode)} items={[
-      { value: "drive", icon: Car, accessibilityLabel: "Drive", label: `${mode === "drive" && selected ? minutes(selected.duration) : "14"} min` },
-      { value: "transit", icon: Bus, accessibilityLabel: "Public Transit", label: `${mode === "transit" && selected ? minutes(selected.duration) : "24"} min` },
-      { value: "walk", icon: Footprints, accessibilityLabel: "Walking", label: `${mode === "walk" && selected ? minutes(selected.duration) : "45"} min` },
+      { value: "drive", icon: Car, accessibilityLabel: "Drive", label: `${cachedDurations.drive || defaultDriveMinutes} min` },
+      { value: "transit", icon: Bus, accessibilityLabel: "Public Transit", label: `${cachedDurations.transit || defaultTransitMinutes} min` },
+      { value: "walk", icon: Footprints, accessibilityLabel: "Walking", label: `${cachedDurations.walk || defaultWalkMinutes} min` },
     ]} />
     <DemoNote text={routeMessage || "Demo traffic, transit schedules and walking paths · not live conditions"} />
     {loading && <Typography accessibilityLiveRegion="polite" style={ui.muted}>Loading mapped routes… Preview estimates remain available.</Typography>}
@@ -81,7 +108,7 @@ export default function RoutingSheet({ mode, onModeChange, options, selectedId, 
     </View>
     {!stickyStart && selected && <Action disabled={selected.coordinates.length < 2} label={mode === "drive" ? "Start" : "Start Navigation"} onPress={() => onStart(selected)} />}
     {expanded && selected && <View style={{ gap: 16 }}>
-      {destination && <CarbonEmissionCard durationMinutes={selected.duration / 60} />}
+      {destination && <CarbonEmissionCard durationMinutes={selected.duration / 60} mode={mode} />}
       <Surface style={{ padding: 14, backgroundColor: colors.amberSoft, gap: 8 }}><View style={[ui.row, { gap: 8 }]}><TriangleAlert size={18} color={colors.amber} /><Typography style={[ui.heading, { fontSize: 14 }]}>Before you travel</Typography></View><Typography style={ui.muted}>{mode === "walk" ? "Check crossing signals, lighting and path access. Mapped access may change; this route is not an accessibility audit." : mode === "transit" ? "Proposed services and example departures. These mapped corridors are not verified operating bus or rail routes." : "Road estimates exclude live traffic. Follow current road signs and closures."}</Typography></Surface>
       {destination && <Surface style={[ui.card, { padding: 0, overflow: "hidden" }]}>
         <Image source={{ uri: destination.id === "park" ? "https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=900&auto=format&fit=crop&q=75" : "https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=900&auto=format&fit=crop&q=75" }} accessibilityLabel="Illustrative destination photo" style={{ width: "100%", height: 140 }} />
