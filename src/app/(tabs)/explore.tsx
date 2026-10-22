@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -42,9 +42,17 @@ export default function Explore() {
   const { data, update } = useStore();
   const [mapHeight, setMapHeight] = useState(700);
   const [snapIndex, setSnapIndex] = useState(1);
+  const [shuttleReminderOpen, setShuttleReminderOpen] = useState(false);
+  const sheetScroll = useRef<ScrollView>(null);
+  const changeShuttleReminder = (open: boolean) => {
+    setShuttleReminderOpen(open);
+    if (open) setSnapIndex(2);
+    sheetScroll.current?.scrollTo({ y: 0, animated: false });
+  };
   const [corridor, setCorridor] = useState(roadCorridors[0]);
   const [selected, setSelected] = useState<Place | null>(null);
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
+  useEffect(() => { setShuttleReminderOpen(false); }, [sheetMode, selected?.id]);
   const [center, setCenter] = useState<Coordinate>(CENTER);
   const [user, setUser] = useState<Coordinate>();
   const [cameraKey, setCameraKey] = useState(0);
@@ -149,11 +157,12 @@ export default function Explore() {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       if (searchOpen) { setSearchOpen(false); Keyboard.dismiss(); return true; }
       if (activeJourney) { finishJourney(); return true; }
+      if (sheetMode === "shuttle" && shuttleReminderOpen) { setShuttleReminderOpen(false); sheetScroll.current?.scrollTo({ y: 0, animated: false }); return true; }
       if (sheetMode) { setSelected(null); setSheetMode(null); setEditing(null); return true; }
       return false;
     });
     return () => subscription.remove();
-  }, [searchOpen, activeJourney, sheetMode, finishJourney]);
+  }, [searchOpen, activeJourney, sheetMode, shuttleReminderOpen, finishJourney]);
   const journeyStep = activeJourney?.steps[journeyIndex];
   const showShuttle = !activeJourney && !routing && (layer === "shuttle" || sheetMode === "shuttle");
   const markers = useMemo(() => {
@@ -181,7 +190,7 @@ export default function Explore() {
   const cameraSelected = selected?.kind === "camera";
   const sheetTitle = routing
     ? `${travelMode === "drive" ? "Drive" : travelMode === "transit" ? "Transit" : "Walk"}${selectedOption ? ` · ${minutes(selectedOption.duration)} min` : ""}${destination ? ` · ${destination.name}` : ""}`
-    : sheetMode === "traffic_details" ? corridor.name : selected?.name || (sheetMode === "shuttle" ? "Elmina Shuttle S1" : "Selected location");
+    : sheetMode === "shuttle" && shuttleReminderOpen ? "Bus Arrival Reminder" : sheetMode === "traffic_details" ? corridor.name : selected?.name || (sheetMode === "shuttle" ? "Elmina Shuttle S1" : "Selected location");
 
   return <View onLayout={(event) => setMapHeight(event.nativeEvent.layout.height)} style={{ flex: 1, backgroundColor: colors.surfaceSecondary }}>
     <TownshipMap markers={markers} selectedId={selected?.id} center={journeyStep?.coordinate || center} userCoordinate={journeyStep?.coordinate || user} pitch={activeJourney ? 50 : 0} bearing={journeyStep?.bearing || 0} following={Boolean(activeJourney)} cameraKey={cameraKey} traffic={!activeJourney && !routing && (layer === "all" || layer === "traffic")}
@@ -232,12 +241,12 @@ export default function Explore() {
         <Pressable accessibilityRole="button" accessibilityLabel={`${sheetTitle}. ${snapIndex === 2 ? "Collapse" : "Expand"} details`} accessibilityState={{ expanded: snapIndex === 2 }} onPress={() => setSnapIndex(toggledSheetSnap(snapIndex))} style={{ flex: 1, minWidth: 0, minHeight: 36, justifyContent: "center" }}>
           <Typography numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1, fontSize: 16, fontWeight: "600", fontFamily: fonts.semibold, color: colors.ink }}>{sheetTitle}</Typography>
         </Pressable>
-        <View collapsable={false}><CloseButton accessibilityLabel="Close map details" onPress={closeSheet} /></View>
+        <View collapsable={false} pointerEvents={sheetMode === "shuttle" && shuttleReminderOpen ? "none" : "auto"} accessibilityElementsHidden={sheetMode === "shuttle" && shuttleReminderOpen} importantForAccessibility={sheetMode === "shuttle" && shuttleReminderOpen ? "no-hide-descendants" : "auto"} style={{ opacity: sheetMode === "shuttle" && shuttleReminderOpen ? 0 : 1 }}><CloseButton accessibilityLabel="Close map details" onPress={closeSheet} /></View>
       </View>
-      <ScrollView key="map-sheet-scroll" removeClippedSubviews={false} scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
+      <ScrollView ref={sheetScroll} key="map-sheet-scroll" removeClippedSubviews={false} scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
         {sheetMode === "traffic_details" ? snapIndex === 0 ? <View style={{ gap: 6 }}><Typography style={ui.heading}>{corridor.delay} min delay</Typography><DemoNote text="Simulated congestion · expand for traffic analysis" /></View> : <TrafficDetailsContent corridor={corridor} onPlanJourney={() => enterRouting()} onClose={closeSheet} />
           : routing ? <PlanJourneyContent mode={travelMode} onModeChange={(mode) => { setTravelMode(mode); setRouteId(undefined); }} options={options} selectedId={selectedOption?.id} onSelect={setRouteId} onStart={startJourney} onExpand={() => setSnapIndex(2)} compact={snapIndex === 0} expanded={snapIndex === 2} destination={destination} stickyStart loading={loading} routeMessage={routeMessage} />
-          : sheetMode === "shuttle" ? <ShuttleContent compact={snapIndex === 0} stopName={selected?.name} stopId={selected?.id} onClose={closeSheet} onFocusBus={(route) => {
+          : sheetMode === "shuttle" ? <ShuttleContent reminderOpen={shuttleReminderOpen} onReminderOpenChange={changeShuttleReminder} compact={snapIndex === 0} stopName={selected?.name} stopId={selected?.id} onClose={closeSheet} onFocusBus={(route) => {
             const bus: Place = route === "S1" ? liveBusPlace : { id: "demo-shuttle-bus-t102", name: "Demo feeder bus T102", subtitle: "Simulated vehicle location", coordinate: [101.5099, 3.18133], kind: "transport" };
             setSelected(bus); setCenter(bus.coordinate); setSnapIndex(0); setCameraKey((key) => key + 1);
           }} />

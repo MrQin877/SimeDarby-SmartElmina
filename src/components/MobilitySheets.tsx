@@ -9,10 +9,15 @@ import {
   Typography,
 } from "./Common";
 import { Bell } from "lucide-react-native";
-import BusReminderModal from "./BusReminderModal";
+import Animated from "react-native-reanimated";
+import BusReminderForm from "./BusReminderForm";
+import { useSheetContentTransition } from "../hooks/useSheetContentTransition";
+import { useStore } from "../state/store";
+import { useAppToast } from "../hooks/useAppToast";
+import type { BusReminder } from "../lib/bus-reminders";
 import LineTabs from "./LineTabs";
 import { colors, fonts, ui } from "../lib/theme";
-import { departureCountdown, followingDepartures, shuttleArrivals, type ShuttleRoute } from "../lib/shuttle-schedule";
+import { departureCountdown, followingDepartures, shuttleArrivals, shuttleDay, shuttleTime, type ShuttleRoute } from "../lib/shuttle-schedule";
 
 /**
  * 1. Traffic Details Sheet Content
@@ -21,14 +26,19 @@ export { default as TrafficDetailsContent } from "./RoadCorridorContent";
 
 export { default as PlanJourneyContent } from "./RoutingSheet";
 
-export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId }: {
+export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId, reminderOpen, onReminderOpenChange }: {
   onFocusBus: (route: string) => void;
   compact?: boolean;
   stopName?: string;
   stopId?: string;
   onClose: () => void;
+  reminderOpen: boolean;
+  onReminderOpenChange: (open: boolean) => void;
 }) {
-  const [reminderOpen, setReminderOpen] = useState(false);
+  const { data, update } = useStore();
+  const notify = useAppToast();
+  const transitionStyle = useSheetContentTransition(reminderOpen);
+  const [editingReminder, setEditingReminder] = useState<BusReminder>();
   const [route, setRoute] = useState<ShuttleRoute>("S1");
   const [now, setNow] = useState(Date.now());
   const [departures, setDepartures] = useState(() => followingDepartures("S1", Date.now()));
@@ -43,7 +53,14 @@ export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId }
   const departure = departures.find(item => item.id === selectedDeparture) || departures[0];
   const stops = shuttleArrivals(route, departure.at);
   const countdown = departureCountdown(departure.at, now);
-  return <> {compact ? <View style={{ gap: 6 }}>
+  const reminders = data.busReminders.filter(item => item.routeId === route && !item.dismissedAt && item.scheduledTime > now);
+  const openReminder = (reminder?: BusReminder) => {
+    setEditingReminder(reminder);
+    onReminderOpenChange(true);
+  };
+  return <Animated.View collapsable={false} style={transitionStyle}>
+    <View collapsable={false} style={{ display: reminderOpen ? "none" : "flex" }} accessibilityElementsHidden={reminderOpen} importantForAccessibility={reminderOpen ? "no-hide-descendants" : "auto"}>
+    {compact ? <View style={{ gap: 6 }}>
     <Typography style={ui.heading}>Bus {route} · {countdown === "Due now" ? countdown : `Departs in ${countdown}`}</Typography>
     <Typography style={ui.muted}>{route === "S1" ? "Elmina & Denai Alam Circular" : "Elmina Green → MRT Feeder"} · Expand for stops and timetable.</Typography>
     <DemoNote text="Simulated departure · not live arrivals" />
@@ -75,7 +92,20 @@ export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId }
           {departure.label} · {departure.day} · {route === "S1" ? "Central Park Pavilion" : "Elmina Green 1"}
         </Description>
       </Surface>
-      <View style={{ flexDirection: "row", gap: 8 }}><Button style={{ flex: 1 }} onPress={() => onFocusBus(route)}><Button.Label style={{ fontSize: 12 }}>Show Bus Location</Button.Label></Button><Button variant="secondary" style={{ flex: 1 }} onPress={() => setReminderOpen(true)}><Bell size={16} color={colors.ink} /><Button.Label style={{ fontSize: 12 }}>Set Reminder</Button.Label></Button></View>
+      <View style={{ flexDirection: "row", gap: 8 }}><Button style={{ flex: 1 }} onPress={() => onFocusBus(route)}><Button.Label style={{ fontSize: 12 }}>Show Bus Location</Button.Label></Button><Button variant="secondary" style={{ flex: 1 }} onPress={() => openReminder()}><Bell size={16} color={colors.ink} /><Button.Label style={{ fontSize: 12 }}>Set Reminder</Button.Label></Button></View>
+      {reminders.map(reminder => <Surface key={reminder.id} style={{ backgroundColor: colors.greenSoft, padding: 12, gap: 8 }}>
+        <View style={ui.row}><Bell size={18} color={colors.green} /><View style={{ flex: 1, gap: 3 }}>
+          <Typography style={[ui.body, { fontFamily: fonts.semibold }]}>Reminder set · {shuttleTime(reminder.scheduledTime - reminder.leadMinutes * 60000)}</Typography>
+          <Typography style={ui.muted}>{shuttleDay(reminder.scheduledTime)} · {reminder.stopName} · Arrives {shuttleTime(reminder.scheduledTime)}</Typography>
+        </View></View>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button size="sm" variant="secondary" accessibilityLabel={`Edit reminder for ${reminder.stopName}`} onPress={() => openReminder(reminder)}><Button.Label>Edit</Button.Label></Button>
+          <Button size="sm" variant="secondary" accessibilityLabel={`Cancel reminder for ${reminder.stopName}`} onPress={() => {
+            update(d => ({ ...d, busReminders: d.busReminders.map(item => item.id === reminder.id ? { ...item, active: false, dismissedAt: Date.now() } : item) }));
+            notify("Reminder cancelled.");
+          }}><Button.Label>Cancel reminder</Button.Label></Button>
+        </View>
+      </Surface>)}
       <Typography style={ui.heading}>Stops & arrival times</Typography>
       <View>
         {stops.map((stop, index) => <View key={stop.id} style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.border }}>
@@ -94,5 +124,9 @@ export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId }
       </View>
 
     </View>
-  )}<BusReminderModal open={reminderOpen} onOpenChange={setReminderOpen} routeId={route} stopId={stopId} stopName={stopName} departureAt={departure.at} /></>;
+  )}</View>
+    <View collapsable={false} style={{ display: reminderOpen ? "flex" : "none" }} accessibilityElementsHidden={!reminderOpen} importantForAccessibility={reminderOpen ? "auto" : "no-hide-descendants"}>
+      <BusReminderForm open={reminderOpen} onOpenChange={onReminderOpenChange} routeId={route} stopId={stopId} stopName={stopName} departureAt={departure.at} reminder={editingReminder} />
+    </View>
+  </Animated.View>;
 }

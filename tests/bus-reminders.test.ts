@@ -71,13 +71,15 @@ test("reminders survive storage restoration, dismissal and older app data", () =
   assert.deepEqual(restoreBusReminders([null, { ...reminder, leadMinutes: "15" }, { ...reminder, scheduledTime: null }, reminder, reminder]), [reminder]);
 });
 
-// Exercise the real modal handlers without loading React Native's native runtime in Node.
+// Exercise the real form handlers without loading React Native's native runtime in Node.
 test("the reminder form defaults to the current stop/departure, cancels without saving, and commits chosen date/lead", () => {
   type Node = { type: unknown; props: Record<string, any> };
   const states: any[] = [], deps: any[] = [], effects: (() => void)[] = [];
   let cursor = 0;
   let data = { busReminders: [] as reminders.BusReminder[] };
   let open = true;
+  let editing: reminders.BusReminder | undefined;
+  let route: schedule.ShuttleRoute = "S1";
   const notices: string[] = [];
   const jsx = (type: unknown, props: Node["props"]) => ({ type, props });
   const Button = Object.assign(() => {}, { Label: "ButtonLabel" });
@@ -87,10 +89,8 @@ test("the reminder form defaults to the current stop/departure, cancels without 
       useEffect(effect: () => void, dependencies: any[]) { const i = cursor++; if (!deps[i] || dependencies.some((v, n) => v !== deps[i][n])) effects.push(effect); deps[i] = dependencies; },
     },
     "react/jsx-runtime": { jsx, jsxs: jsx }, "react-native": { View: "View" },
-    "@gorhom/bottom-sheet": { BottomSheetScrollView: "ScrollView" },
     "lucide-react-native": { Bell: "Bell", ChevronDown: "ChevronDown" },
     "./Common": { Button, Surface: "Surface", Typography: "Typography" },
-    "./MenuSheet": { default: "MenuSheet" },
     "../state/store": { useStore: () => ({ update: (fn: any) => { data = fn(data); } }) },
     "../hooks/useAppToast": { useAppToast: () => (message: string) => notices.push(message) },
     "../lib/bus-reminders": reminders, "../lib/shuttle-schedule": schedule,
@@ -98,11 +98,11 @@ test("the reminder form defaults to the current stop/departure, cancels without 
   };
   const exports: Record<string, any> = {};
   class Clock extends Date { static now() { return now; } }
-  const source = ts.transpileModule(readFileSync(new URL("../src/components/BusReminderModal.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const source = ts.transpileModule(readFileSync(new URL("../src/components/BusReminderForm.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
   runInNewContext(source, { exports, Date: Clock, require: (name: string) => { assert.ok(name in modules, name); return modules[name]; } });
   const render = (): Node => {
     cursor = 0;
-    const tree = exports.default({ open, onOpenChange: (value: boolean) => { open = value; }, routeId: "S1", stopId: "bus-stop-3", departureAt: departure });
+    const tree = exports.default({ open, onOpenChange: (value: boolean) => { open = value; }, routeId: route, stopId: "bus-stop-3", departureAt: departure, reminder: editing });
     if (effects.length) { effects.splice(0).forEach(effect => effect()); return render(); }
     return tree;
   };
@@ -116,11 +116,25 @@ test("the reminder form defaults to the current stop/departure, cancels without 
   assert.equal(data.busReminders.length, 0);
   render(); open = true; render();
   click("Tomorrow"); click("20 minutes");
-  click("Set Reminder");
+  click("Confirm Reminder");
   assert.equal(open, false);
   assert.equal(data.busReminders.length, 1);
   assert.equal(data.busReminders[0].stopId, "bus-stop-3");
   assert.equal(data.busReminders[0].leadMinutes, 20);
   assert.equal(malaysiaDayStart(data.busReminders[0].scheduledTime), malaysiaDayStart(now) + 86400000);
   assert.ok(notices[0].startsWith("Reminder scheduled for Elmina Green Lake Park at"));
+  // Editing and cancelling must leave the saved record untouched.
+  editing = data.busReminders[0];
+  render(); open = true; render();
+  assert.ok(nodes(render()).find(n => n.props.accessibilityLabel === "20 minutes")!.props.accessibilityState.selected);
+  click("10 minutes"); click("Cancel");
+  assert.equal(data.busReminders[0], editing);
+  render(); open = true; render();
+  click("Today"); click("Confirm Reminder");
+  assert.equal(data.busReminders.length, 1, "editing replaces the original rather than duplicating it");
+  assert.equal(malaysiaDayStart(data.busReminders[0].scheduledTime), malaysiaDayStart(now));
+  assert.equal(data.busReminders[0].leadMinutes, 20);
+  route = "T102"; editing = undefined;
+  assert.doesNotThrow(render, "switching routes keeps the mounted hidden form safe");
+  assert.ok(content(render()).includes("Elmina Green 1"));
 });

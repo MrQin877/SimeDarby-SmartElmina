@@ -59,20 +59,27 @@ function text(node: any): string { if (typeof node === "string" || typeof node =
 
 test("real departure chip handlers update selection, countdown, and rendered arrival times", () => {
   const state: any[] = [];
+  let reminderOpen = false;
+  let editingData = { busReminders: [] as import("../src/lib/bus-reminders").BusReminder[] };
+  const notices: string[] = [];
   let cursor = 0;
   const jsx = (type: unknown, props: Node["props"]): Node => ({ type, props });
   const dependencies: Record<string, any> = {
     react: { useEffect() {}, useState: (initial: unknown) => { const i = cursor++; if (!(i in state)) state[i] = typeof initial === "function" ? initial() : initial; return [state[i], (next: unknown) => { state[i] = next; }]; } },
     "react/jsx-runtime": { jsx, jsxs: jsx }, "react-native": { View: "View" },
     "./Common": { Badge: "Badge", Button: Object.assign(() => {}, { Label: "ButtonLabel" }), Description: "Description", DemoNote: "DemoNote", Surface: "Surface", Typography: Object.assign(() => {}, { Heading: "Heading" }) },
-    "lucide-react-native": { Bell: "Bell" }, "./BusReminderModal": { default: "BusReminderModal" }, "./LineTabs": { default: "LineTabs" }, "./RoadCorridorContent": {}, "./RoutingSheet": {},
+    "lucide-react-native": { Bell: "Bell" }, "./BusReminderForm": { default: "BusReminderForm" }, "./LineTabs": { default: "LineTabs" }, "./RoadCorridorContent": {}, "./RoutingSheet": {},
+    "react-native-reanimated": { default: { View: "AnimatedView" } },
+    "../hooks/useSheetContentTransition": { useSheetContentTransition: () => ({}) },
+    "../state/store": { useStore: () => ({ data: editingData, update: (fn: any) => { editingData = fn(editingData); } }) },
+    "../hooks/useAppToast": { useAppToast: () => (message: string) => notices.push(message) },
     "../lib/theme": { colors: {}, fonts: {}, ui: {} }, "../lib/shuttle-schedule": schedule,
   };
   const exports: Record<string, any> = {};
   const source = ts.transpileModule(readFileSync(new URL("../src/components/MobilitySheets.tsx", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
   class Clock extends Date { static now() { return now; } }
   runInNewContext(source, { exports, Date: Clock, require(name: string) { assert.ok(name in dependencies, name); return dependencies[name]; } });
-  const render = () => { cursor = 0; return exports.ShuttleContent({ onFocusBus() {}, onClose() {} }); };
+  const render = () => { cursor = 0; return exports.ShuttleContent({ onFocusBus() {}, onClose() {}, reminderOpen, onReminderOpenChange(value: boolean) { reminderOpen = value; } }); };
   const before = render();
   assert.ok(text(before).includes("5:00"));
   const chip = nodes(before).find(n => n.props.accessibilityLabel?.startsWith("Departure 08:50 AM"))!;
@@ -86,12 +93,25 @@ test("real departure chip handlers update selection, countdown, and rendered arr
   for (const removed of ["Wheelchair Ramp", "Audio Announcements", "Low-Floor Entry"]) assert.ok(!text(after).includes(removed));
   assert.ok(text(after).indexOf("FOLLOWING DEPARTURES") < text(after).indexOf("NEXT DEPARTURE"));
   nodes(after).find(n => text(n).trim() === "Set Reminder" && typeof n.props.onPress === "function")!.props.onPress();
-  const reminder = nodes(render()).find(n => n.type === "BusReminderModal")!;
+  const reminder = nodes(render()).find(n => n.type === "BusReminderForm")!;
   assert.equal(reminder.props.open, true);
+  const page = nodes(render()).find(n => n.props.accessibilityElementsHidden === true)!;
+  assert.equal(page.props.style.display, "none", "schedule content is replaced while configuring a reminder");
   assert.equal(reminder.props.routeId, "S1");
   assert.equal(reminder.props.departureAt, schedule.followingDepartures("S1", now)[1].at);
   reminder.props.onOpenChange(false);
-  assert.equal(nodes(render()).find(n => n.type === "BusReminderModal")!.props.open, false);
+  assert.equal(nodes(render()).find(n => n.type === "BusReminderForm")!.props.open, false);
+  editingData = { busReminders: [{ id: "saved", routeId: "S1", stopId: "bus-stop-1", stopName: "Central Park", departureTime: "08:50 AM", scheduledTime: schedule.followingDepartures("S1", now)[1].at, leadMinutes: 15, active: true }] };
+  let tree = render();
+  nodes(tree).find(n => n.props.accessibilityLabel === "Edit reminder for Central Park")!.props.onPress();
+  assert.equal(nodes(render()).find(n => n.type === "BusReminderForm")!.props.reminder.id, "saved");
+  assert.equal(reminderOpen, true);
+  reminder.props.onOpenChange(false);
+  tree = render();
+  nodes(tree).find(n => n.props.accessibilityLabel === "Cancel reminder for Central Park")!.props.onPress();
+  assert.equal(editingData.busReminders[0].active, false);
+  assert.ok(editingData.busReminders[0].dismissedAt);
+  assert.ok(notices.includes("Reminder cancelled."));
   nodes(after).find(n => n.type === "LineTabs")!.props.onChange("T102");
   assert.ok(text(render()).includes("Elmina Green → MRT Feeder"));
 });
