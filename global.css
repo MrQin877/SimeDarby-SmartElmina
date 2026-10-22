@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import "uniwind";
+@import "heroui-native/styles";
+
+@theme {
+  --radius: 0.5rem;
+  --field-radius: 0.75rem;
+  --font-dm-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-dm-sans);
+}
+
+@layer theme {
+  :root {
+    @variant light {
+      /* Theme Colors (Light Mode) — Sime Darby Crimson & Neutral OKLCH */
+      --accent: #DE372B;
+      --accent-foreground: #FFFFFF;
+      --background: #FAFAFA;
+      --border: #E4E4E7;
+      --danger: #DE372B;
+      --danger-foreground: #FFFFFF;
+      --default: #EFEFF1;
+      --default-foreground: #18181B;
+      --field-background: #FFFFFF;
+      --field-border: transparent;
+      --field-foreground: #18181B;
+      --field-placeholder: #71717A;
+      --focus: #DE372B;
+      --foreground: #18181B;
+      --muted: #71717A;
+      --overlay: #FFFFFF;
+      --overlay-foreground: #18181B;
+      --scrollbar: oklch(87.10% 0.0000 27.33);
+      --segment: #FFFFFF;
+      --segment-foreground: #18181B;
+      --separator: #E4E4E7;
+      --success: #16803C;
+      --success-foreground: #FFFFFF;
+      --surface: #FFFFFF;
+      --surface-foreground: #18181B;
+      --surface-secondary: #EFEFF1;
+      --surface-secondary-foreground: #18181B;
+      --surface-tertiary: #EAEAEB;
+      --surface-tertiary-foreground: #18181B;
+      --warning: #D97706;
+      --warning-foreground: #FFFFFF;
+    }
+
+    @variant dark {
+      /* Theme Colors (Dark Mode) */
+      --accent: oklch(58.84% 0.1968 27.33);
+      --accent-foreground: oklch(99.11% 0 0);
+      --background: oklch(12.00% 0.0000 27.33);
+      --border: oklch(28.00% 0.0000 27.33);
+      --danger: oklch(59.40% 0.1967 357.45);
+      --danger-foreground: oklch(99.11% 0 0);
+      --default: oklch(27.40% 0.0000 27.33);
+      --default-foreground: oklch(99.11% 0 0);
+      --field-background: oklch(21.03% 0.0000 27.33);
+      --field-border: transparent;
+      --field-foreground: oklch(99.11% 0.0000 27.33);
+      --field-placeholder: oklch(70.50% 0.0000 27.33);
+      --focus: oklch(58.84% 0.1968 27.33);
+      --foreground: oklch(99.11% 0.0000 27.33);
+      --muted: oklch(70.50% 0.0000 27.33);
+      --overlay: oklch(21.03% 0.0000 27.33);
+      --overlay-foreground: oklch(99.11% 0.0000 27.33);
+      --scrollbar: oklch(70.50% 0.0000 27.33);
+      --segment: oklch(39.64% 0.0000 27.33);
+      --segment-foreground: oklch(99.11% 0.0000 27.33);
+      --separator: oklch(25.00% 0.0000 27.33);
+      --success: oklch(73.29% 0.1935 123.63);
+      --success-foreground: oklch(21.03% 0.0059 123.63);
+      --surface: oklch(21.03% 0.0000 27.33);
+      --surface-foreground: oklch(99.11% 0.0000 27.33);
+      --surface-secondary: oklch(25.70% 0.0000 27.33);
+      --surface-secondary-foreground: oklch(99.11% 0.0000 27.33);
+      --surface-tertiary: oklch(27.21% 0.0000 27.33);
+      --surface-tertiary-foreground: oklch(99.11% 0.0000 27.33);
+      --warning: oklch(82.03% 0.1388 49.16);
+      --warning-foreground: oklch(21.03% 0.0059 49.16);
+    }
+  }
+}
