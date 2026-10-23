@@ -3,9 +3,8 @@ import { Image, Platform, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { router, useLocalSearchParams } from "expo-router";
-import { Camera, Sparkles } from "lucide-react-native";
+import { Camera } from "lucide-react-native";
 import {
-  Button,
   CloseButton,
   DemoNote,
   Description,
@@ -23,7 +22,7 @@ import Action from "../components/Action";
 import { reportError } from "../lib/model";
 import { useAppToast } from "../hooks/useAppToast";
 import { useStore } from "../state/store";
-import { colors, fonts, radius, ui } from "../lib/theme";
+import { colors, radius, ui } from "../lib/theme";
 export default function ReportScreen() {
   const params = useLocalSearchParams<{ location?: string; scenario?: string; prefill?: string }>();
   const isScenario3 = params.scenario === "3" || params.prefill === "scenario3";
@@ -46,16 +45,6 @@ export default function ReportScreen() {
   const notify = useAppToast();
   const setError = (message: string) => { setErrorState(message); if (message) notify(message, "error"); };
   const [busy, setBusy] = useState(false);
-
-  const fillScenario3 = () => {
-    setCategory("Road & traffic");
-    setLocation("Near Elmina Central Park pedestrian crossing");
-    setDescription(
-      "I noticed a pothole near the pedestrian crossing while walking around Elmina Central Park this evening. The damaged road surface may pose a hazard to cyclists, pedestrians and vehicles passing through the area. I have attached a photo and marked the approximate location on the map for reference."
-    );
-    setPhotos([Platform.OS === "web" ? "/pothole-central-park.jpg" : "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/products-03.jpg"]);
-    notify("Scenario 3 details filled (Daniel: Central Park Pothole)", "info");
-  };
   async function pick() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -141,16 +130,6 @@ export default function ReportScreen() {
       subtitle="A small report can make a big difference."
       back
     >
-      <Surface style={{ padding: 12, borderRadius: radius.card, backgroundColor: colors.redSoft, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Typography style={{ fontFamily: fonts.bold, fontSize: 13, color: colors.red }}>Scenario 3 Demo</Typography>
-          <Description style={ui.muted}>Daniel (Central Park Pothole hazard report)</Description>
-        </View>
-        <Button size="sm" onPress={fillScenario3} style={{ backgroundColor: colors.red, borderRadius: 20 }}>
-          <Sparkles size={14} color={colors.white} />
-          <Button.Label style={{ color: colors.white, fontSize: 11 }}>Quick-Fill</Button.Label>
-        </Button>
-      </Surface>
       <Typography style={ui.label}>CATEGORY</Typography>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {[
