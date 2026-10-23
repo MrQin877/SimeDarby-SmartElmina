@@ -36,6 +36,7 @@ export const colors = {
   amber: "#D97706",
   amberSoft: "#FEF3C7",
   blue: "#2563EB",
+  blueSoft: "#EFF6FF",
 };
 export const ui = StyleSheet.create({
   iconButton: { width: 40, height: 40, borderRadius: 20 },

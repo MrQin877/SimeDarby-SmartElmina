@@ -1,13 +1,20 @@
-import { View } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import { useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { MapPin, Sun, Car, Route, Bus } from "lucide-react-native";
-import { Description, Page, PressableFeedback, Section, Surface, Typography } from "../../components/Common";
+import { MapPin, Sun, Car, Route, Bus, ScanLine } from "lucide-react-native";
+import { Button, Description, Page, PressableFeedback, Section, Surface, Typography } from "../../components/Common";
+import BoardingQrModal from "../../components/BoardingQrModal";
+import { useStore } from "../../state/store";
 import ResidentHeader from "../../components/ResidentHeader";
 import AnnouncementCard from "../../components/AnnouncementCard";
 import { announcements } from "../../lib/data";
 import { colors, fonts, ui } from "../../lib/theme";
 
 export default function Home() {
+  const { data } = useStore();
+  const [bannerSize, setBannerSize] = useState({ width: 0, height: 0 });
+  const [qrOpen, setQrOpen] = useState(false);
   return <Page stickyHeader={<ResidentHeader compact />}>
     <ResidentHeader />
     <View style={{ gap: 6 }}>
@@ -18,6 +25,11 @@ export default function Home() {
       <Typography.Heading style={[ui.title, { fontSize: 30 }]}>Smart Elmina</Typography.Heading>
       <Description style={ui.muted}>Your daily connection to City of Elmina.</Description>
     </View>
+    <Surface onLayout={event => { const { width, height } = event.nativeEvent.layout; setBannerSize(previous => previous.width === width && previous.height === height ? previous : { width, height }); }} style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: colors.red, flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 20, overflow: "hidden" }}>
+      <Svg pointerEvents="none" width={bannerSize.width} height={bannerSize.height} style={StyleSheet.absoluteFillObject}><Defs><LinearGradient id="homePassSunrise" x1="0%" y1="0%" x2="100%" y2="100%"><Stop offset="0%" stopColor="#DE372B" /><Stop offset="48%" stopColor="#EA580C" /><Stop offset="100%" stopColor="#F59E0B" /></LinearGradient></Defs><Rect width="100%" height="100%" fill="url(#homePassSunrise)" /></Svg>
+      <PressableFeedback accessibilityLabel="Open Eco-Pass rewards" onPress={() => router.push("/rewards")} style={{ flex: 1, minWidth: 0, gap: 3 }}><Typography style={{ fontFamily: fonts.bold, fontSize: 9, lineHeight: 14, color: colors.white, backgroundColor: "#FFFFFF26", borderRadius: 8, alignSelf: "flex-start", paddingHorizontal: 6, paddingVertical: 2 }}>★ GOLD TIER</Typography><Typography style={{ fontFamily: fonts.bold, fontSize: 24, lineHeight: 32, color: colors.white }}>{data.rewardPoints} PTS</Typography><Typography style={{ color: colors.white, fontSize: 10, lineHeight: 15 }}>Feeder Bus & Temu Merchant Pass</Typography></PressableFeedback>
+      <Button size="sm" onPress={() => setQrOpen(true)} style={{ borderRadius: 24, paddingHorizontal: 14, backgroundColor: colors.white }}><ScanLine size={16} color={colors.red} /><Button.Label style={{ fontSize: 12, color: colors.red }}>Pass QR</Button.Label></Button>
+    </Surface>
     <View style={{ gap: 10 }}>
       <Typography style={ui.label}>SMART MOBILITY</Typography>
       <View style={{ flexDirection: "row", gap: 10 }}>
@@ -40,5 +52,6 @@ export default function Home() {
       </Surface>
     </View>
     <Typography style={[ui.label, { textAlign: "center", fontSize: 9 }]}>SIME DARBY PROPERTY · SMART ELMINA</Typography>
+    <BoardingQrModal open={qrOpen} onClose={() => setQrOpen(false)} />
   </Page>;
 }

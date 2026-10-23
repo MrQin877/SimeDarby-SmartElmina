@@ -1,10 +1,11 @@
+import ResidentAvatar from "./ResidentAvatar";
 import { View } from "react-native";
 import { router } from "expo-router";
 import { Bell } from "lucide-react-native";
-import { Avatar, IconButton, PressableFeedback, Typography } from "./Common";
+import { IconButton, PressableFeedback, Typography } from "./Common";
 import { useStore } from "../state/store";
 import { initialAlerts } from "../lib/data";
-import { colors, fonts, ui } from "../lib/theme";
+import { colors, ui } from "../lib/theme";
 
 export default function ResidentHeader({ compact = false }: { compact?: boolean }) {
   const { data } = useStore();
@@ -12,9 +13,7 @@ export default function ResidentHeader({ compact = false }: { compact?: boolean 
   return <View style={[ui.between, { minHeight: 56 }]}>
     <View style={[ui.row, { flex: 1 }]}>
       <PressableFeedback accessibilityLabel="Open profile" onPress={() => router.push("/profile")} style={ui.iconButton}>
-        <Avatar style={[ui.iconButton, { backgroundColor: colors.redSoft }]}>
-          <Avatar.Fallback textProps={{ style: { fontFamily: fonts.bold, color: colors.red } }}>{data.name.slice(0, 2).toUpperCase()}</Avatar.Fallback>
-        </Avatar>
+        <ResidentAvatar size={40} />
       </PressableFeedback>
       <View style={{ flex: 1 }}>
         {!compact && <Typography style={ui.muted}>Good morning,</Typography>}

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { View, Share } from "react-native";
+import { View, Share, Image } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ChevronRight,
+  Clock,
   MapPin,
   Share2,
 } from "lucide-react-native";
 import { announcements } from "../lib/data";
+import { getAnnouncementImageSource } from "../lib/announcement-images";
 import {
   Badge,
   Button,
@@ -15,7 +16,6 @@ import {
   IconButton,
   Label,
   Page,
-  PressableFeedback,
   Surface,
   TextArea,
   TextField,
@@ -84,6 +84,18 @@ export default function AnnouncementScreen() {
           {post.title}
         </Typography.Heading>
 
+        {(() => {
+          const imageSource = getAnnouncementImageSource(post.imageUrl, post.id);
+          return imageSource ? (
+            <Image
+              source={imageSource}
+              accessibilityLabel={post.title}
+              style={{ width: "100%", height: 210, borderRadius: radius.card, marginVertical: 4 }}
+              resizeMode="cover"
+            />
+          ) : null;
+        })()}
+
         <Typography style={[ui.body, { fontSize: 14, color: colors.ink, lineHeight: 22 }]}>
           {post.content || post.body}
         </Typography>
@@ -93,56 +105,71 @@ export default function AnnouncementScreen() {
           <Surface
             variant="secondary"
             style={{
-              padding: 12,
+              padding: 14,
               borderRadius: radius.card,
               backgroundColor: colors.surfaceSecondary,
-              gap: 4,
+              gap: 8,
             }}
           >
             <View style={[ui.row, { gap: 6 }]}>
               <MapPin size={15} color={colors.red} />
               <Typography style={{ fontSize: 12, fontFamily: fonts.bold, fontWeight: "700", color: colors.ink }}>
-                Impact Area
+                Impact Area & Closure Period
               </Typography>
             </View>
-            <Typography style={{ fontSize: 12, color: colors.ink, lineHeight: 18 }}>
+            <Typography style={{ fontSize: 13, color: colors.ink, lineHeight: 19 }}>
               {post.impactArea}
             </Typography>
-            <PressableFeedback
-              onPress={() => router.push("/(tabs)/explore?sheet=traffic_details")}
-              style={[ui.row, { gap: 4, marginTop: 4 }]}
-            >
-              <Typography style={{ fontSize: 12, fontFamily: fonts.bold, fontWeight: "700", color: colors.red }}>
-                View Detour on Map
-              </Typography>
-              <ChevronRight size={14} color={colors.red} />
-            </PressableFeedback>
+            {post.dateStr && (
+              <View style={[ui.row, { gap: 6, alignItems: "center" }]}>
+                <Clock size={13} color={colors.muted} />
+                <Typography style={{ fontSize: 12, color: colors.muted, lineHeight: 17 }}>
+                  {post.dateStr}
+                </Typography>
+              </View>
+            )}
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <Button
+                size="sm"
+                variant="primary"
+                onPress={() => router.push(post.actionLink ? (post.actionLink as any) : "/(tabs)/explore?sheet=plan_journey&origin=elmina-valley&destination=elmina-city-centre")}
+                style={{ flex: 1, height: 38, minHeight: 38, backgroundColor: colors.red, borderRadius: radius.md, justifyContent: "center", alignItems: "center", paddingHorizontal: 6 }}
+              >
+                <Button.Label numberOfLines={1} style={{ color: colors.white, fontSize: 12, fontFamily: fonts.semibold, fontWeight: "600" }}>
+                  {post.actionText === "Open Journey Planner" ? "Journey Planner" : (post.actionText || "Journey Planner")}
+                </Button.Label>
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={() => router.push("/(tabs)/explore?place=closure-persiaran-elmina&sheet=traffic_details&corridor=persiaran-elmina")}
+                style={{ flex: 1, height: 38, minHeight: 38, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, justifyContent: "center", alignItems: "center", paddingHorizontal: 6 }}
+              >
+                <Button.Label numberOfLines={1} style={{ color: colors.ink, fontSize: 12, fontFamily: fonts.medium, fontWeight: "500" }}>
+                  View Detour
+                </Button.Label>
+              </Button>
+            </View>
           </Surface>
         ) : null}
 
-        {/* Resident Action Steps Checklist */}
+        {/* Resident Advisory Details Checklist */}
         {post.residentSteps && post.residentSteps.length > 0 ? (
           <View style={{ gap: 8, paddingTop: 4 }}>
-            <Typography style={{ fontSize: 12, fontFamily: fonts.bold, fontWeight: "700", color: colors.ink }}>
-              Action Steps for Residents
+            <Typography style={{ fontSize: 13, fontFamily: fonts.bold, fontWeight: "700", color: colors.ink }}>
+              Important Notice Details
             </Typography>
             {post.residentSteps.map((step, idx) => (
-              <View key={idx} style={[ui.row, { alignItems: "flex-start", gap: 8 }]}>
-                <Surface
+              <View key={idx} style={[ui.row, { alignItems: "flex-start", gap: 10 }]}>
+                <View
                   style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    backgroundColor: colors.redSoft,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginTop: 1,
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: colors.red,
+                    marginTop: 6,
                   }}
-                >
-                  <Typography style={{ fontSize: 11, fontFamily: fonts.bold, fontWeight: "700", color: colors.red }}>
-                    {idx + 1}
-                  </Typography>
-                </Surface>
+                />
                 <Typography style={{ flex: 1, fontSize: 13, color: colors.ink, lineHeight: 19 }}>
                   {step}
                 </Typography>

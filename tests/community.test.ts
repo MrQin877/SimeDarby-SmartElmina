@@ -66,3 +66,34 @@ test("map layers isolate cameras, transport and traffic without losing all place
   assert.equal(markerKind(places.find((place) => place.id === "bottleneck-gce")!), "traffic");
   assert.equal(markerKind(places.find((place) => place.kind === "camera")!), "camera");
 });
+
+test("My Posts recognises both the current author name and locally authored posts after a rename", async () => {
+  const { discussionFilters, discussionFilterPills, isOwnDiscussion } = await import("../src/lib/community");
+  const named = { ...initialDiscussions[0], id: "own-current", authorName: initialData.fullName };
+  const renamed = { ...initialDiscussions[1], id: "own-renamed", authorName: "Previous resident name" };
+  const posts = [named, renamed, ...initialDiscussions];
+  assert.deepEqual(filterDiscussions(posts, "my_posts", [], initialData.fullName).map(p => p.id), [named.id]);
+  assert.deepEqual(filterDiscussions(posts, "my_posts", [], initialData.fullName, [renamed.id]).map(p => p.id), [named.id, renamed.id]);
+  assert.deepEqual(filterDiscussions(posts, "my_posts", []), []);
+  assert.equal(isOwnDiscussion(renamed, initialData.fullName, [renamed.id]), true);
+  assert.ok(discussionFilters.some(item => item.value === "my_posts"));
+  assert.equal(discussionFilterPills.my_posts.short, "My Posts");
+});
+
+test("deleting an authored discussion removes replies, likes and saves and survives reload", async () => {
+  const { deleteDiscussionPost } = await import("../src/lib/model");
+  const mine = { ...initialDiscussions[0], id: "own-deleted", authorName: initialData.fullName };
+  const keep = { ...mine, id: "own-kept" };
+  const reply = createDiscussionReply(mine.id, "A neighbour reply", initialData)!;
+  const otherReply = createDiscussionReply(keep.id, "Keep this reply", initialData)!;
+  const before = { ...initialData, discussions: [mine, keep], saved: [mine.id, keep.id, "saved-place"], liked: [mine.id, keep.id], comments: [reply, otherReply] };
+  const after = deleteDiscussionPost(before, mine.id);
+  assert.deepEqual(after.discussions.map(p => p.id), [keep.id]);
+  assert.deepEqual(after.saved, [keep.id, "saved-place"]);
+  assert.deepEqual(after.liked, [keep.id]);
+  assert.deepEqual(after.comments, [otherReply]);
+  assert.equal(before.discussions.length, 2, "the reducer does not mutate the prior snapshot");
+  const restored = restoreData(JSON.stringify(after));
+  assert.ok(!mergeDiscussions(restored.discussions).some(post => post.id === mine.id));
+  assert.deepEqual(deleteDiscussionPost(after, mine.id), after, "deletion is idempotent");
+});

@@ -2,15 +2,22 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import {
   Badge,
+  Button,
   Description,
   DemoNote,
   Surface,
   Typography,
 } from "./Common";
-import Action from "./Action";
+import { Bell } from "lucide-react-native";
+import Animated from "react-native-reanimated";
+import BusReminderForm from "./BusReminderForm";
+import { useSheetContentTransition } from "../hooks/useSheetContentTransition";
+import { useStore } from "../state/store";
+import { useAppToast } from "../hooks/useAppToast";
+import type { BusReminder } from "../lib/bus-reminders";
 import LineTabs from "./LineTabs";
 import { colors, fonts, ui } from "../lib/theme";
-import { shuttleStops } from "../lib/data";
+import { departureCountdown, followingDepartures, shuttleArrivals, shuttleDay, shuttleTime, type ShuttleRoute } from "../lib/shuttle-schedule";
 
 /**
  * 1. Traffic Details Sheet Content
@@ -19,63 +26,84 @@ export { default as TrafficDetailsContent } from "./RoadCorridorContent";
 
 export { default as PlanJourneyContent } from "./RoutingSheet";
 
-const feederStops = [
-  { id: "t102-1", name: "Elmina Green 1", subtitle: "Precinct pickup point", time: "08:29 AM", note: "Origin" },
-  { id: "t102-2", name: "Persiaran Atmosfera", subtitle: "Covered boarding bay", time: "08:35 AM", note: "+6 min" },
-  { id: "t102-3", name: "Kwasa Damansara Transit Hub", subtitle: "MRT connection", time: "08:47 AM", note: "Terminal" },
-];
-
-export function ShuttleContent({ onFocusBus, compact = false }: {
+export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId, reminderOpen, onReminderOpenChange, managedReminder, onManageReminder, onReminderSaved, initialRoute = "S1" }: {
   onFocusBus: (route: string) => void;
   compact?: boolean;
   stopName?: string;
+  stopId?: string;
   onClose: () => void;
+  reminderOpen: boolean;
+  onReminderOpenChange: (open: boolean) => void;
+  managedReminder?: BusReminder;
+  onManageReminder: (id: string | null) => void;
+  onReminderSaved: (id: string) => void;
+  initialRoute?: ShuttleRoute;
 }) {
-  const [route, setRoute] = useState("S1");
-  const [seconds, setSeconds] = useState(360);
+  const { data, update } = useStore();
+  const notify = useAppToast();
+  const transitionStyle = useSheetContentTransition(reminderOpen);
+  const [editingReminder, setEditingReminder] = useState<BusReminder>();
+  const [chosenRoute, setRoute] = useState<ShuttleRoute>(initialRoute);
+  const [now, setNow] = useState(Date.now());
+  const [departures, setDepartures] = useState(() => followingDepartures(initialRoute, Date.now()));
+  const [selectedDeparture, setSelectedDeparture] = useState(departures[0].id);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
+  const chooseRoute = (next: string) => {
+    const value = next === "T102" ? "T102" : "S1";
+    const time = Date.now();
+    const nextDepartures = followingDepartures(value, time);
+    setRoute(value); setNow(time); setDepartures(nextDepartures); setSelectedDeparture(nextDepartures[0].id);
+  };
+  const managedRoute = managedReminder?.routeId;
   useEffect(() => {
-    const departure = Date.now() + (route === "S1" ? 360 : 180) * 1000;
-    const tick = () => setSeconds(Math.max(0, Math.ceil((departure - Date.now()) / 1000)));
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, [route]);
-  const stops = route === "S1" ? shuttleStops : feederStops;
-  const departures = route === "S1" ? ["08:52 AM", "09:12 AM", "09:32 AM"] : ["08:44 AM", "08:59 AM", "09:14 AM"];
-  const countdown = seconds ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "Due now";
-  if (compact) return <View style={{ gap: 6 }}>
+    if (!managedRoute) return;
+    const next = followingDepartures(managedRoute, Date.now());
+    setRoute(managedRoute); setDepartures(next); setSelectedDeparture(next[0].id);
+  }, [managedRoute]);
+  const route = managedRoute ?? chosenRoute;
+  const departure = departures.find(item => item.id === selectedDeparture) || departures[0];
+  const stops = shuttleArrivals(route, departure.at);
+  const countdown = departureCountdown(departure.at, now);
+  const reminders = data.busReminders.filter(item => item.routeId === route && !item.dismissedAt && item.scheduledTime > now);
+  const openReminder = (reminder?: BusReminder) => {
+    setEditingReminder(reminder);
+    onReminderOpenChange(true);
+  };
+  return <Animated.View collapsable={false} style={transitionStyle}>
+    <View collapsable={false} style={{ display: reminderOpen || managedReminder ? "none" : "flex" }} accessibilityElementsHidden={reminderOpen || Boolean(managedReminder)} importantForAccessibility={reminderOpen || managedReminder ? "no-hide-descendants" : "auto"}>
+    {compact ? <View style={{ gap: 6 }}>
     <Typography style={ui.heading}>Bus {route} · {countdown === "Due now" ? countdown : `Departs in ${countdown}`}</Typography>
-    <Typography style={ui.muted}>{route === "S1" ? "Valley & Central Park Circular" : "Elmina Green → MRT Feeder"} · Expand for stops and timetable.</Typography>
+    <Typography style={ui.muted}>{route === "S1" ? "Elmina & Denai Alam Circular" : "Elmina Green → MRT Feeder"} · Expand for stops and timetable.</Typography>
     <DemoNote text="Simulated departure · not live arrivals" />
-  </View>;
-  return (
+  </View> : (
     <View style={{ gap: 16 }}>
-      <LineTabs value={route} onChange={setRoute} items={[{ value: "S1", label: "Route S1" }, { value: "T102", label: "Route T102" }]} />
-      <DemoNote text="Proposed services · simulated countdown and timetable" />
+      <LineTabs value={route} onChange={chooseRoute} items={[{ value: "S1", label: "Route S1" }, { value: "T102", label: "Route T102" }]} />
+      <DemoNote text="Proposed services · Malaysia time · simulated timetable and bus position" />
       <View style={{ gap: 5 }}>
         <Typography.Heading type="h2" style={ui.heading}>
-          {route === "S1" ? "Valley & Central Park Circular" : "Elmina Green → MRT Feeder"}
+          {route === "S1" ? "Elmina & Denai Alam Circular" : "Elmina Green → MRT Feeder"}
         </Typography.Heading>
         <Description style={ui.muted}>
           {route === "S1" ? "06:30 AM–10:00 PM · Every 20 min" : "06:00 AM–10:30 PM · Every 15 min"}
         </Description>
+      </View>
+      <View style={{ gap: 8 }}>
+        <Typography style={ui.label}>FOLLOWING DEPARTURES</Typography>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {departures.map(item => <Button key={item.id} size="sm" variant={selectedDeparture === item.id ? "primary" : "secondary"} accessibilityLabel={`Departure ${item.label}, ${item.day}`} accessibilityState={{ selected: selectedDeparture === item.id }} onPress={() => setSelectedDeparture(item.id)} style={{ borderRadius: 24, backgroundColor: selectedDeparture === item.id ? colors.red : colors.surfaceSecondary, paddingHorizontal: 12 }}><Button.Label style={{ fontSize: 12, color: selectedDeparture === item.id ? colors.white : colors.ink }}>{item.label}</Button.Label></Button>)}
+        </View>
       </View>
       <Surface style={{ padding: 16, backgroundColor: colors.redSoft, gap: 8 }}>
         <View style={ui.between}>
           <Typography style={[ui.label, { color: colors.red }]}>NEXT DEPARTURE · DEMO</Typography>
           <Badge tone="red">{route === "S1" ? "EV-01" : "EV-04"}</Badge>
         </View>
-        <Typography style={{ fontFamily: fonts.bold, fontSize: 32, color: colors.red }}>{countdown}</Typography>
+        <Typography style={{ fontFamily: fonts.bold, fontSize: 32, lineHeight: 40, color: colors.red }}>{countdown}</Typography>
         <Description style={[ui.muted, { color: colors.ink }]}>
-          {route === "S1" ? "Central Park Pavilion · Bay 2" : "Elmina Green 1 · Precinct stop"}
+          {departure.label} · {departure.day} · {route === "S1" ? "Central Park Pavilion" : "Elmina Green 1"}
         </Description>
       </Surface>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-        <Badge>Wheelchair Ramp</Badge>
-        <Badge>Audio Announcements</Badge>
-        <Badge>Low-Floor Entry</Badge>
-      </View>
-      <Action label="Show demo bus location" onPress={() => onFocusBus(route)} />
+      <View style={{ flexDirection: "row", gap: 8 }}><Button style={{ flex: 1 }} onPress={() => onFocusBus(route)}><Button.Label style={{ fontSize: 12 }}>Show Bus Location</Button.Label></Button><Button variant="secondary" style={{ flex: 1 }} onPress={() => reminders.length ? onManageReminder(reminders[0].id) : openReminder()}><Bell size={16} color={colors.ink} /><Button.Label style={{ fontSize: 12 }}>{reminders.length ? "Manage Reminder" : "Set Reminder"}</Button.Label></Button></View>
       <Typography style={ui.heading}>Stops & arrival times</Typography>
       <View>
         {stops.map((stop, index) => <View key={stop.id} style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.border }}>
@@ -92,12 +120,28 @@ export function ShuttleContent({ onFocusBus, compact = false }: {
           </View>
         </View>)}
       </View>
-      <Typography style={ui.label}>FOLLOWING DEPARTURES</Typography>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        {departures.map((time) => <Surface key={time} style={{ flex: 1, padding: 10, backgroundColor: colors.surfaceSecondary, alignItems: "center" }}>
-          <Typography style={{ fontSize: 12, fontFamily: fonts.semibold, color: colors.ink }}>{time}</Typography>
-        </Surface>)}
-      </View>
+
     </View>
-  );
+  )}</View>
+    <View collapsable={false} style={{ display: managedReminder && !reminderOpen ? "flex" : "none", gap: 16 }} accessibilityElementsHidden={!managedReminder || reminderOpen} importantForAccessibility={managedReminder && !reminderOpen ? "auto" : "no-hide-descendants"}>
+      {managedReminder && [managedReminder].map(reminder => <Surface key={reminder.id} style={{ backgroundColor: colors.greenSoft, padding: 12, gap: 8 }}>
+        <View style={ui.row}><Bell size={18} color={colors.green} /><View style={{ flex: 1, gap: 3 }}>
+          <Typography style={[ui.body, { fontFamily: fonts.semibold }]}>Reminder set · {shuttleTime(reminder.scheduledTime - reminder.leadMinutes * 60000)}</Typography>
+          <Typography style={ui.muted}>{shuttleDay(reminder.scheduledTime)} · {reminder.stopName} · Arrives {shuttleTime(reminder.scheduledTime)}</Typography>
+        </View></View>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button size="sm" variant="secondary" accessibilityLabel={`Edit reminder for ${reminder.stopName}`} onPress={() => openReminder(reminder)}><Button.Label>Edit</Button.Label></Button>
+          <Button size="sm" variant="secondary" accessibilityLabel={`Cancel reminder for ${reminder.stopName}`} onPress={() => {
+            update(d => ({ ...d, busReminders: d.busReminders.map(item => item.id === reminder.id ? { ...item, active: false, dismissedAt: Date.now() } : item) }));
+            onManageReminder(null);
+            notify("Reminder cancelled.");
+          }}><Button.Label>Cancel reminder</Button.Label></Button>
+        </View>
+      </Surface>)}
+      <Button variant="secondary" onPress={() => onManageReminder(null)}><Button.Label>Bus schedule</Button.Label></Button>
+    </View>
+    <View collapsable={false} style={{ display: reminderOpen ? "flex" : "none" }} accessibilityElementsHidden={!reminderOpen} importantForAccessibility={reminderOpen ? "auto" : "no-hide-descendants"}>
+      <BusReminderForm open={reminderOpen} onOpenChange={onReminderOpenChange} routeId={route} stopId={stopId} stopName={stopName} departureAt={departure.at} reminder={editingReminder} onSaved={onReminderSaved} />
+    </View>
+  </Animated.View>;
 }

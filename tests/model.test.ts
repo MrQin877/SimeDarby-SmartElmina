@@ -31,7 +31,7 @@ test("report validation rejects empty locations, short text, excess photos", () 
   );
 });
 test("corrupt local data does not crash startup", () => {
-  assert.equal(restoreData("{bad").reports.length, 0);
+  assert.equal(restoreData("{bad").reports.length, 2);
   assert.deepEqual(
     restoreData('{"comments":[null],"liked":[1,"post"]}').liked,
     ["post"],

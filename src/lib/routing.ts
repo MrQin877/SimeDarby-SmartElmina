@@ -112,3 +112,12 @@ export function distanceLabel(meters: number) {
     ? `${Math.round(meters)} m`
     : `${(meters / 1000).toFixed(1)} km`;
 }
+
+/** Illustrative duration-only comparison model; distance is intentionally excluded. */
+export function calculateCarbonEmissions(durationMinutes: number) {
+  const duration = Number.isFinite(durationMinutes) ? Math.max(0, durationMinutes) : 0;
+  const carKg = Math.max(0.1, Number((duration * 0.14).toFixed(2)));
+  const transitKg = Number((carKg * 0.20).toFixed(2));
+  const transitSavingsKg = Number((carKg - transitKg).toFixed(2));
+  return { carKg, transitKg, transitSavingsKg, walkSavingsKg: carKg };
+}

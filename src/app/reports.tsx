@@ -1,21 +1,23 @@
 import { Image, View } from "react-native";
 import { router } from "expo-router";
-import { Construction, LampCeiling, Leaf, MapPin } from "lucide-react-native";
+import { Construction, LampCeiling, Leaf, HelpCircle, MapPin } from "lucide-react-native";
 import { Badge, DemoNote, Page, Surface, Typography } from "../components/Common";
+import { newestReports, reportStatus } from "../lib/reports";
 import Action from "../components/Action";
 import { useStore } from "../state/store";
 import { colors, fonts, ui } from "../lib/theme";
 export default function Reports() {
   const { data } = useStore();
-  return <Page title="My reports" subtitle="Every issue, followed through." back>
-    <Action label="Report an issue" onPress={() => router.push("/report")} />
+  const reports = newestReports(data.reports);
+  return <Page title="My Reports" subtitle="Every issue, followed through." back>
+    <Action label="+ Report an issue / feedback" onPress={() => router.push("/report")} />
     <Surface style={[ui.card, { padding: 0, gap: 0, overflow: "hidden" }]}>
-      {!data.reports.length && <View style={{ padding: 16, gap: 8 }}><Typography style={ui.heading}>Nothing reported yet</Typography><Typography style={ui.muted}>Your issues, attached photos and progress will appear here.</Typography></View>}
-      {data.reports.map((report, index) => {
-        const Icon = /light/i.test(report.category) ? LampCeiling : /clean|environment/i.test(report.category) ? Leaf : Construction;
-        const resolved = report.status === "Resolved";
-        return <View key={report.id} style={{ padding: 16, gap: 12, borderBottomWidth: index === data.reports.length - 1 ? 0 : 1, borderColor: colors.border }}>
-          <View style={ui.between}><Typography style={[ui.label, { flex: 1, fontSize: 10 }]}>{report.category}</Typography><Badge tone={resolved ? "green" : "amber"}>{resolved ? "Resolved" : report.status === "In progress" ? "In Progress" : "Under Review"}</Badge></View>
+      {!reports.length && <View style={{ padding: 16, gap: 8 }}><Typography style={ui.heading}>Nothing reported yet</Typography><Typography style={ui.muted}>Your issues, attached photos and progress will appear here.</Typography></View>}
+      {reports.map((report, index) => {
+        const Icon = /light/i.test(report.category) ? LampCeiling : /clean|environment/i.test(report.category) ? Leaf : /road|traffic|facilit/i.test(report.category) ? Construction : HelpCircle;
+        const status = reportStatus(report.status);
+        return <View key={report.id} style={{ padding: 16, gap: 12, borderBottomWidth: index === reports.length - 1 ? 0 : 1, borderColor: colors.border }}>
+          <View style={ui.between}><Typography style={[ui.label, { flex: 1, fontSize: 10 }]}>{report.category}</Typography><Badge tone={status.tone}>{status.label}</Badge></View>
           <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
             <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center" }}><Icon size={19} color={colors.ink} /></View>
             <View style={{ flex: 1, gap: 6 }}><Typography style={{ fontFamily: fonts.semibold, color: colors.ink, fontSize: 14, lineHeight: 21 }}>{report.description}</Typography><View style={{ flexDirection: "row", gap: 4 }}><MapPin size={13} color={colors.muted} /><Typography style={[ui.muted, { flex: 1 }]}>{report.location}</Typography></View></View>

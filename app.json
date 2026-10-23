@@ -25,7 +25,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Select photos to attach to your neighbourhood report.",
+          "photosPermission": "Select a profile photo or attach photos to your neighbourhood report.",
           "cameraPermission": false,
           "microphonePermission": false
         }

@@ -5,15 +5,18 @@ export type ActionProps = {
   onPress: () => void;
   secondary?: boolean;
   disabled?: boolean;
+  disableAnimation?: boolean;
 };
 export default function Action({
   label,
   onPress,
   secondary,
   disabled,
+  disableAnimation = false,
 }: ActionProps) {
   return (
     <Button
+      animation={disableAnimation ? "disable-all" : undefined}
       onPress={onPress}
       isDisabled={disabled}
       variant={secondary ? "secondary" : "primary"}

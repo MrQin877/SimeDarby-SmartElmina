@@ -31,7 +31,7 @@ export default function Settings() {
       <Surface style={group}>
         <View style={row}><Typography style={ui.heading}>Township emergency hotline</Typography><Typography style={ui.body}>Official contact details are pending verification.</Typography></View>
         <View style={row}><Typography style={ui.heading}>Auxiliary police</Typography><Typography style={ui.body}>Direct contact details will appear here once confirmed by township management.</Typography></View>
-        <PressableFeedback onPress={() => router.push("/report")} style={{ padding: 16, minHeight: 56, justifyContent: "center" }}><Typography style={[ui.body, { color: colors.red }]}>Report an issue / feedback →</Typography></PressableFeedback>
+        <PressableFeedback onPress={() => router.push("/reports")} style={{ padding: 16, minHeight: 56, justifyContent: "center" }}><Typography style={[ui.body, { color: colors.red }]}>Report an issue / feedback →</Typography></PressableFeedback>
       </Surface>
       <DemoNote text="Support directory preview · no verified hotline is configured." />
     </>}

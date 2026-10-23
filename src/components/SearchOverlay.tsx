@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from "react-native";
-import Animated, { Easing, FadeInUp, ReduceMotion } from "react-native-reanimated";
+import Animated, { cancelAnimation, Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, ArrowUpRight, BriefcaseBusiness, Plus, Ellipsis, BusFront, Clock, House, MapPin, type LucideIcon } from "lucide-react-native";
 import { Badge, Button, CloseButton, DemoNote, IconButton, Input, PressableFeedback, Surface, Typography } from "./Common";
@@ -13,13 +13,14 @@ import { useStore } from "../state/store";
 import { useAppToast } from "../hooks/useAppToast";
 import { colors, fonts, radius, ui } from "../lib/theme";
 
-const searchEntrance = FadeInUp.duration(220)
-  .easing(Easing.out(Easing.cubic))
-  .withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })
-  .reduceMotion(ReduceMotion.System);
-
 export default function SearchOverlay({ query, onQueryChange, onClose, onSelect }: { query: string; onQueryChange: (text: string) => void; onClose: () => void; onSelect: (place: Place) => void }) {
   const insets = useSafeAreaInsets();
+  const entrance = useSharedValue(0);
+  useEffect(() => {
+    entrance.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic), reduceMotion: ReduceMotion.System });
+    return () => cancelAnimation(entrance);
+  }, [entrance]);
+  const entranceStyle = useAnimatedStyle(() => ({ opacity: entrance.value, transform: [{ translateY: (1 - entrance.value) * 14 }] }));
   const { data, update } = useStore();
   const notify = useAppToast();
   const input = useRef<TextInput>(null);
@@ -59,7 +60,7 @@ export default function SearchOverlay({ query, onQueryChange, onClose, onSelect 
     { title: "Add", detail: "Add custom shortcut", icon: Plus, onPress: () => { if (data.shortcuts.length >= 20) { notify("You can keep up to 20 custom shortcuts. Edit or delete one in More."); return; } openMenu({ id: `shortcut-${Date.now()}`, title: "", iconName: "map-pin" }); } },
     { title: "More", detail: "Manage shortcuts", icon: Ellipsis, onPress: () => openMenu("manage") },
   ];
-  return <Animated.View entering={searchEntrance} style={{ position: "absolute", inset: 0, zIndex: 10 }}><KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+  return <Animated.View collapsable={false} style={[{ position: "absolute", inset: 0, zIndex: 10 }, entranceStyle]}><KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }}>
     <View style={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 16, gap: 16 }}>
       <Surface style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 6, paddingRight: 6, paddingVertical: 4, borderRadius: radius.field, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white }}>
         <IconButton icon={ArrowLeft} label={configuring ? "Cancel shortcut location selection" : "Close destination search"} onPress={() => { if (configuring) { setConfiguring(null); onQueryChange(""); } else onClose(); }} style={{ borderWidth: 0, backgroundColor: "transparent" }} />

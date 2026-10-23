@@ -1,3 +1,7 @@
+import { demoReports, restoreReports } from "./reports";
+import { restoreBusReminders, type BusReminder } from "./bus-reminders";
+import { restoreAvatarUri } from "./avatar";
+import { defaultRewardState, restoreRewards, type RewardState } from "./rewards";
 import { restoreShortcuts, type ShortcutItem } from "./shortcuts";
 
 export type Report = {
@@ -70,8 +74,10 @@ export type VisitorPass = {
   status: "active" | "used" | "expired";
 };
 
-export type LocalData = {
+export type LocalData = RewardState & {
+  busReminders: BusReminder[];
   reports: Report[];
+  reportsDemoSeeded: boolean;
   comments: Comment[];
   liked: string[];
   saved: string[];
@@ -81,6 +87,7 @@ export type LocalData = {
   shortcuts: ShortcutItem[];
   name: string;
   fullName: string;
+  avatarUri: string | null;
   precinct: string;
   address: string;
   phone: string;
@@ -106,24 +113,28 @@ export type LocalData = {
 };
 
 export const initialData: LocalData = {
-  reports: [],
+  ...defaultRewardState,
+  busReminders: [],
+  reports: demoReports,
+  reportsDemoSeeded: true,
   comments: [],
   liked: [],
   saved: [],
-  recentSearches: ["elmina-green-1", "atmosfera-stop", "temu-hub", "rainbow-bridge"],
+  recentSearches: ["elmina-city-centre", "elmina-valley", "elmina-green-1", "atmosfera-stop"],
   workPlaceId: null,
   homePlaceId: null,
   shortcuts: [],
-  name: "Farhan",
-  fullName: "Ahmad Farhan Bin Roslan",
-  precinct: "City of Elmina — Demo Precinct",
+  name: "Aiman",
+  fullName: "Aiman Farhan Bin Razak",
+  avatarUri: null,
+  precinct: "Elmina Valley — Resident",
   address: "Elmina Valley 3, Persiaran Atmosfera",
-  phone: "+60 12-345 6789",
-  email: "farhan@example.com",
+  phone: "+60 12-482 9180",
+  email: "aiman.razak@example.com",
   emailVerified: true,
   residentId: "900512-10-XXXX",
-  unitId: "ELM-8829-RIDGE",
-  memberSince: "Oct 2022",
+  unitId: "ELM-V3-0812",
+  memberSince: "Jan 2024",
   language: "English (UK)",
   textSize: "standard",
   notifications: {
@@ -164,14 +175,10 @@ export function restoreData(raw: string | null): LocalData {
   try {
     const d = JSON.parse(raw);
     return {
-      reports: Array.isArray(d.reports)
-        ? d.reports.filter(
-            (r: Report) =>
-              typeof r?.id === "string" &&
-              typeof r.description === "string" &&
-              Array.isArray(r.photos),
-          )
-        : [],
+      ...restoreRewards(d),
+      busReminders: restoreBusReminders(d.busReminders),
+      reports: restoreReports(d.reports, d.reportsDemoSeeded === true),
+      reportsDemoSeeded: true,
       comments: Array.isArray(d.comments)
         ? d.comments.filter(
             (c: Comment) =>
@@ -188,8 +195,9 @@ export function restoreData(raw: string | null): LocalData {
       workPlaceId: typeof d.workPlaceId === "string" ? d.workPlaceId : null,
       homePlaceId: typeof d.homePlaceId === "string" ? d.homePlaceId : null,
       shortcuts: restoreShortcuts(d.shortcuts),
-      name: typeof d.name === "string" && d.name.trim() ? d.name : "Farhan",
-      fullName: typeof d.fullName === "string" ? d.fullName : initialData.fullName,
+      name: typeof d.name === "string" && d.name.trim() && d.name !== "Farhan" ? d.name : "Aiman",
+      avatarUri: restoreAvatarUri(d.avatarUri),
+      fullName: typeof d.fullName === "string" && !d.fullName.includes("Roslan") ? d.fullName : initialData.fullName,
       precinct: typeof d.precinct === "string" ? d.precinct : initialData.precinct,
       address: typeof d.address === "string" ? d.address : initialData.address,
       phone: typeof d.phone === "string" ? d.phone : initialData.phone,
@@ -219,4 +227,15 @@ export function restoreData(raw: string | null): LocalData {
   } catch {
     return initialData;
   }
+}
+
+/** Remove an authored post and all local references in one persisted update. */
+export function deleteDiscussionPost(data: LocalData, postId: string): LocalData {
+  return {
+    ...data,
+    discussions: data.discussions.filter(post => post.id !== postId),
+    saved: data.saved.filter(id => id !== postId),
+    liked: data.liked.filter(id => id !== postId),
+    comments: data.comments.filter(reply => reply.postId !== postId),
+  };
 }

@@ -14,14 +14,19 @@ export type Place = {
   address?: string;
   searchCategory?: string;
   searchStatus?: string;
+  announcementId?: string;
+  imageUrl?: string;
+  announcementCategory?: Announcement["category"];
+  announcementPriority?: Announcement["priority"];
+  markerOffset?: [number, number];
 };
 export const CENTER: Coordinate = [101.5118, 3.1796];
 // Fixtures are illustrative, including stop/camera placements. Never represent them as verified live observations.
 export const places: Place[] = [
   {
     id: "kwasa-hub",
-    name: "Kwasa Damansara Transit Hub",
-    subtitle: "MRT connection · Kwasa Damansara",
+    name: "Kwasa Sentral MRT Station",
+    subtitle: "MRT connection & transit terminal · Kwasa Hub",
     address: "Jalan Kwasa Sentral, Kwasa Damansara, Selangor · demo address",
     coordinate: [101.5791, 3.1769],
     kind: "place",
@@ -49,12 +54,30 @@ export const places: Place[] = [
   },
   {
     id: "bottleneck-gce",
-    name: "GCE Toll Interchange 3502",
-    subtitle: "Persiaran Atmosfera merge • Level 4 Saturation",
+    name: "Approach to Elmina Interchange",
+    subtitle: "Guthrie Corridor Expressway (GCE) · Heavy Traffic (7:45 AM)",
     coordinate: [101.5175, 3.1735],
     kind: "hazard",
     detail:
-      "Demo Junction A: Heavy congestion with 12-min delay. AI routing suggests taking Elmina West Bypass to save 9 minutes.",
+      "Guthrie Corridor Expressway (GCE) approach to Elmina Interchange is experiencing Heavy traffic (32 vehicles queued observed at 7:45 AM). 12-min delay reported. AI routing suggests taking Elmina West Bypass.",
+  },
+  {
+    id: "elmina-green-stop",
+    name: "Proposed Elmina Green Shuttle Stop",
+    subtitle: "Smart Elmina Community Shuttle · Route T102",
+    coordinate: [101.5035, 3.1970],
+    kind: "transport",
+    detail:
+      "Proposed community shuttle pickup for Elmina Green residents connecting to Elmina Lakeside Mall (10:20 AM) and Kwasa Sentral MRT Station (10:30 AM). Departure scheduled for 10:10 AM.",
+  },
+  {
+    id: "hazard-pothole",
+    name: "Pothole Near Elmina Central Park",
+    subtitle: "Damaged Road Surface · Reported 5:30 PM",
+    coordinate: [101.51425, 3.17901],
+    kind: "hazard",
+    detail:
+      "Damaged road surface near pedestrian crossing posing hazard to cyclists, pedestrians, and vehicles. Reported 23 October 2026 at 5:30 PM by Daniel. Maintenance inspection in progress.",
   },
   {
     id: "stop-1",
@@ -110,6 +133,40 @@ export const places: Place[] = [
   { id: "temu-hub", name: "Temu Commercial Hub", subtitle: "Persiaran Atmosfera", coordinate: [101.5099, 3.18133], kind: "place", searchCategory: "Shopping", searchStatus: "Stores open · sample" },
   { id: "rainbow-bridge", name: "Elmina Central Park & Rainbow Bridge", subtitle: "Park & recreation · City of Elmina", coordinate: [101.51425, 3.17901], kind: "place", searchCategory: "Recreation", searchStatus: "Open 24 hours · sample" },
   { id: "home-valley-3", name: "Elmina Valley 3", subtitle: "Home · illustrative township location", coordinate: CENTER, kind: "place", searchCategory: "Home" },
+  {
+    id: "elmina-valley",
+    name: "Elmina Valley",
+    subtitle: "Home · Persiaran Atmosfera, Precinct 1",
+    address: "Jalan Casuarina, Elmina Valley, 40160 Shah Alam, Selangor",
+    coordinate: [101.5142, 3.1790],
+    kind: "place",
+    searchCategory: "Home",
+    searchStatus: "Aiman's Residence · Elmina Valley",
+  },
+  {
+    id: "elmina-city-centre",
+    name: "Elmina City Centre",
+    subtitle: "Commercial & Business Hub · Persiaran Elmina",
+    address: "Persiaran Elmina, Elmina City Centre, 40160 Shah Alam, Selangor",
+    coordinate: [101.5035, 3.1875],
+    kind: "place",
+    searchCategory: "Work",
+    searchStatus: "Offices & Corporate Hub · open",
+  },
+  {
+    id: "closure-persiaran-elmina",
+    announcementId: "ann-01",
+    announcementCategory: "Roads",
+    announcementPriority: "high",
+    imageUrl: "road-closure.jpg",
+    name: "Road Closure · Persiaran Elmina",
+    subtitle: "Road Resurfacing & Maintenance · 7:00 AM – 11:00 AM",
+    address: "Selected section of Persiaran Elmina approaching Elmina City Centre",
+    coordinate: [101.5085, 3.1845],
+    kind: "hazard",
+    detail:
+      "Temporary road closure by Township Management today, 23 October 2026 (7:00 AM – 11:00 AM) for road resurfacing and maintenance. Motorists traveling to Elmina City Centre are advised to use the Elmina West Bypass or Persiaran Atmosfera.",
+  },
 ];
 export const filters: MapFilter[] = ["Traffic", "Transport", "Hazards", "CCTV"];
 export function visiblePlaces(filter: MapFilter): Place[] {
@@ -126,17 +183,21 @@ export function searchPlaces(query: string) {
   return places.filter(
     (p) =>
       (p.kind === "place" || p.id === "atmosfera-stop") &&
-      `${p.name} ${p.subtitle}`.toLocaleLowerCase().includes(q),
+      `${p.name} ${p.subtitle} ${p.searchCategory || ""}`.toLocaleLowerCase().includes(q),
   );
 }
 export type Announcement = {
   id: string;
   title: string;
-  category: "Roads" | "Maintenance" | "Community";
+  category: "Roads" | "Transport" | "Maintenance" | "Power" | "Community" | "Wellness" | "General";
   body: string;
   time: string;
   reactions: number;
   placeId?: string;
+  coordinate?: Coordinate;
+  active?: boolean;
+  routeOriginId?: string;
+  routeDestinationId?: string;
   icon: "road" | "tree" | "light";
   summary?: string;
   content?: string;
@@ -153,25 +214,31 @@ export type Announcement = {
 export const announcements: Announcement[] = [
   {
     id: "ann-01",
-    title: "Persiaran Atmosfera Eastbound Closure & S1 Adjustment",
+    title: "Temporary Road Closure Along Persiaran Elmina",
     category: "Roads",
-    body: "Roadworks between Valley Gate and Central Park from Oct 24–28. Feeder Bus S1 rerouted to Lakeside Bay shelter.",
+    body: "Road resurfacing and maintenance by Township Management along Persiaran Elmina today, 23 October 2026 (7:00 AM – 11:00 AM). Selected section approaching Elmina City Centre is closed.",
     time: "Today, 7:30 AM",
-    reactions: 38,
-    placeId: "entrance",
+    reactions: 54,
+    placeId: "closure-persiaran-elmina",
     icon: "road",
     priority: "high",
-    source: "Sime Darby Property Township Management",
-    dateStr: "Oct 24–28, 2026",
-    summary: "Roadworks between Valley Gate and Central Park from Oct 24–28. Feeder Bus S1 rerouted to Lakeside Bay.",
-    content: "Essential culvert and drainage enhancement along the eastbound corridor. Gate 3 Lane 1 temporary bypass active with traffic wardens on duty.",
-    impactArea: "Persiaran Atmosfera, opposite Lakeside Promenade roundabout.",
+    source: "Township Management",
+    dateStr: "23 October 2026 · 7:00 AM – 11:00 AM",
+    imageUrl: "road-closure.jpg",
+    routeOriginId: "elmina-valley",
+    routeDestinationId: "elmina-city-centre",
+    summary: "Temporary road closure along Persiaran Elmina approaching Elmina City Centre for road resurfacing and maintenance (7:00 AM – 11:00 AM).",
+    content: "Township Management wishes to inform residents that road resurfacing and maintenance works will be carried out along a selected section of Persiaran Elmina approaching Elmina City Centre today, Friday, 23 October 2026, between 7:00 AM and 11:00 AM.\n\nTraffic management teams and auxiliary wardens are stationed to guide traffic flow. Commuters heading from Elmina Valley towards Elmina City Centre are advised to review alternative routes in the Journey Planner or use the Elmina West Bypass.",
+    impactArea: "Selected section of Persiaran Elmina approaching Elmina City Centre",
     residentSteps: [
-      "Eastbound lanes closed strictly between 9:00 AM – 4:00 PM daily.",
-      "Clear directional signboards and auxiliary wardens stationed.",
-      "Bus S1 pickup shifted 120m south to Lakeside Bay shelter."
+      "Closure period: 7:00 AM – 11:00 AM on 23 October 2026.",
+      "Reason: Road resurfacing and maintenance.",
+      "Detour: Use Persiaran Atmosfera or Elmina West Bypass towards Elmina City Centre.",
+      "Plan extra 10–12 minutes buffer during morning commute.",
+      "Feeder Bus S1 runs on dedicated priority bypass lanes."
     ],
-    actionText: "View Route in Map",
+    actionText: "Journey Planner",
+    actionLink: "/(tabs)/explore?sheet=plan_journey&origin=elmina-valley&destination=elmina-city-centre",
   },
   {
     id: "ann-02",
@@ -311,6 +378,21 @@ export const initialDiscussions: DiscussionPost[] = [
 ];
 
 export const initialAlerts: AlertItem[] = [
+  {
+    id: "alt-road-closure",
+    title: "🚧 Road Closure: Persiaran Elmina",
+    subtitle: "Road resurfacing & maintenance · 7:00 AM – 11:00 AM today",
+    source: "Township Management",
+    timestamp: "Today, 7:30 AM",
+    type: "mobility",
+    badgeLabel: "Road Advisory",
+    content: "Township Management has temporarily closed a selected section of Persiaran Elmina approaching Elmina City Centre for road resurfacing. Please review detour options in Journey Planner.",
+    isRead: false,
+    isImportant: true,
+    isAcknowledged: false,
+    actionType: "mobility_link",
+    actionLabel: "Open Journey Planner",
+  },
   {
     id: "alt-01",
     title: "Severe Thunderstorm & Flash Ponding Warning",
@@ -606,7 +688,32 @@ export interface RoadCorridor {
   advisory: string;
 }
 export const roadCorridors: RoadCorridor[] = [
-  { id: "gce", name: "GCE Exit 3502", coordinate: [101.515847, 3.174127], speedLimit: 80, speed: 14, delay: 12, queue: 450, throughput: 78, status: "Heavy congestion", tone: "red", advisory: "Compare the Elmina West bypass before departing. Allow an extra 12 minutes in this simulation." },
+  {
+    id: "persiaran-elmina",
+    name: "Persiaran Elmina",
+    coordinate: [101.5085, 3.1845],
+    speedLimit: 60,
+    speed: 6,
+    delay: 15,
+    queue: 650,
+    throughput: 12,
+    status: "Road Resurfacing / Closed",
+    tone: "red",
+    advisory: "Selected section approaching Elmina City Centre is closed for resurfacing (7:00 AM – 11:00 AM). AI Journey Planner advises diverting via Elmina West Bypass or Persiaran Atmosfera."
+  },
+  {
+    id: "gce",
+    name: "Approach to Elmina Interchange",
+    coordinate: [101.515847, 3.174127],
+    speedLimit: 80,
+    speed: 14,
+    delay: 12,
+    queue: 450,
+    throughput: 32,
+    status: "Heavy",
+    tone: "red",
+    advisory: "Guthrie Corridor Expressway (GCE) approach to Elmina Interchange is experiencing Heavy traffic (32 vehicles queued observed at 7:45 AM). Allow an extra 12 minutes or divert via Elmina West Bypass."
+  },
   { id: "atmosfera", name: "Persiaran Atmosfera", coordinate: [101.512122, 3.173294], speedLimit: 60, speed: 38, delay: 6, queue: 180, throughput: 46, status: "Moderate congestion", tone: "amber", advisory: "Merging traffic is slowing this corridor. Compare route options and leave extra travel time." },
   { id: "central-park", name: "Central Park Boulevard", coordinate: [101.509225, 3.177905], speedLimit: 50, speed: 45, delay: 0, queue: 0, throughput: 18, status: "Smooth flow", tone: "green", advisory: "Park access is clear in this simulation. Follow the posted speed and give way at pedestrian crossings." },
 ];
@@ -614,8 +721,27 @@ export function resolveRoadCorridor(id?: string, name?: string, coordinate?: Coo
   const exact = roadCorridors.find((road) => road.id === id);
   if (exact) return { ...exact, coordinate: coordinate || exact.coordinate };
   const label = name?.toLowerCase() || "";
-  const matching = roadCorridors.find((road) => label.includes(road.name.toLowerCase()) || (road.id === "gce" && /gce|e35/.test(label)) || (road.id === "atmosfera" && label.includes("atmosfera")));
+  const matching = roadCorridors.find((road) => label.includes(road.name.toLowerCase()) || (road.id === "persiaran-elmina" && (label.includes("persiaran elmina") || label.includes("elmina city centre") || label.includes("resurfacing"))) || (road.id === "gce" && /gce|e35|interchange|approach/.test(label)) || (road.id === "atmosfera" && label.includes("atmosfera")));
   const nearest = coordinate ? [...roadCorridors].sort((a, b) => Math.hypot(a.coordinate[0] - coordinate[0], a.coordinate[1] - coordinate[1]) - Math.hypot(b.coordinate[0] - coordinate[0], b.coordinate[1] - coordinate[1]))[0] : roadCorridors[0];
   const road = matching || nearest;
   return { ...road, name: name || road.name, coordinate: coordinate || road.coordinate };
 }
+
+// Illustrative partner offers, not connected to merchant redemption systems.
+export const voucherCategories = [{ value: "explore", label: "All" }, { value: "transit", label: "Transit" }, { value: "food", label: "Dining" }, { value: "groceries", label: "Groceries" }, { value: "lifestyle", label: "Lifestyle" }] as const;
+export const vouchers: import("./rewards").Voucher[] = [
+  { id: "nursery", merchant: "ELMINA NURSERY", merchantIcon: "🌱", offer: "RM5 OFF", title: "A greener home", points: 90, category: "lifestyle", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/products-03.jpg", outlet: "Elmina nursery", description: "A little green for your living space.", terms: ["Illustrative resident offer.", "One use per voucher."] },
+  { id: "jaya", merchant: "JAYA GROCER", merchantIcon: "🛒", offer: "RM5.00 OFF", title: "Fresh Produce & Daily Groceries", points: 150, category: "groceries", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/products-03.jpg", outlet: "Elmina Lakeside Mall", description: "Make your next grocery visit a little more rewarding with this resident offer.", terms: ["Valid at the participating outlet listed above.", "One voucher per resident. Present it before payment.", "Not exchangeable for cash or combinable with other offers."] },
+  { id: "bask", merchant: "BASK BEAR", merchantIcon: "🐻", offer: "RM3.00 OFF", title: "Your Daily Coffee, On Us", points: 100, category: "food", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/intro.jpg", outlet: "Elmina Lakeside Mall", description: "Enjoy your next coffee break with an Eco-Pass resident reward.", terms: ["Valid at the participating outlet listed above.", "One voucher per resident. Selected beverages only.", "Not exchangeable for cash or combinable with other offers."] },
+  { id: "eco", merchant: "ECO-MOBILITY", merchantIcon: "🛺", offer: "FREE RIDE", title: "Central Park Buggy Experience", points: 75, category: "transit", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-grayscale@master/dist/assets/img/bg-masthead.jpg", outlet: "Central Park Pavilion", description: "Explore Central Park with a shared recreational buggy ride.", terms: ["Subject to availability and operating hours.", "One recreational ride per voucher.", "This illustrative offer is separate from Gold Tier privileges."] },
+  { id: "komugi", merchant: "KOMUGI", merchantIcon: "🥐", offer: "20% OFF", title: "Fresh Bakes & Sweet Moments", points: 120, category: "food", image: "https://cdn.jsdelivr.net/gh/StartBootstrap/startbootstrap-business-casual@master/dist/assets/img/products-02.jpg", outlet: "Elmina Lakeside Mall", description: "Treat yourself to fresh bakes with a resident reward.", terms: ["Valid on selected bakery products at the listed outlet.", "One voucher per resident. Present it before payment.", "Not exchangeable for cash or combinable with other offers."] },
+];
+export const residentPerks = [
+  { icon: "bus", title: "Free Elmina EV Shuttle Feeder S1", detail: "Unlimited boarding with your resident QR." },
+  { icon: "zap", title: "15% off EV fast charging", detail: "Central Park & Temu Hub charging bays." },
+  { icon: "car", title: "Complimentary buggy service", detail: "Central Park recreational transit." },
+  { icon: "calendar", title: "Priority sports court booking", detail: "Book tennis and futsal up to 7 days ahead." },
+  { icon: "sprout", title: "10% off at Community Nursery", detail: "Native shrubs and trees for your home." },
+] as const;
+
+export { elminaBusStops, shuttleRouteCoordinates, liveBusLocation } from "./shuttle-data";

@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { Search, Mic, LocateFixed, Bookmark, MapPin, ArrowDownUp, Layers, Car, BusFront, Video, Check } from "lucide-react-native";
 import { CENTER, places, searchPlaces, roadCorridors, resolveRoadCorridor, type Coordinate, type Place } from "../../lib/data";
+import { canonicalShuttlePlace, elminaBusStops, liveBusLocation, liveBusPlace, shuttleMapPlaces, shuttleRouteCoordinates } from "../../lib/shuttle-data";
+import ColocatedFacilities from "../../components/ColocatedFacilities";
+import AnnouncementMapPreview from "../../components/AnnouncementMapPreview";
+import BusReminderPill from "../../components/BusReminderPill";
+import { activeBusReminder, type BusReminder } from "../../lib/bus-reminders";
 import TownshipMap from "../../components/TownshipMap";
 import DraggableSheet from "../../components/DraggableSheet";
 import MenuSheet from "../../components/MenuSheet";
@@ -21,15 +26,16 @@ import { demoRouteOptions, type TravelMode, type RouteOption } from "../../lib/j
 import { distanceLabel, minutes, clearJourney, getJourney, validCoordinate, type Journey } from "../../lib/routing";
 import { useAppToast } from "../../hooks/useAppToast";
 import { useRouteOptions } from "../../hooks/useRouteOptions";
-import { filterMapPlaces, markerKind, mapLayers, type MapLayer } from "../../lib/map-layers";
+import { filterMapPlaces, markerKind, mapLayers, announcementMapPlaces, placeAnnouncement, type MapLayer } from "../../lib/map-layers";
 import { useExploreSheetVisibility } from "../../components/ExploreSheetContext";
 import { sheetSnapPoints, routingSnapPoints, toggledSheetSnap } from "../../lib/sheet";
 
-type SheetMode = "place" | "traffic_details" | "plan_journey" | "shuttle";
+type SheetMode = "place" | "traffic_details" | "plan_journey" | "shuttle" | "announcement" | "colocated";
 const defaultDestination = places.find((place) => place.id === "kwasa-hub")!;
 const currentLocation: Place = { id: "current-location", name: "Current Location", subtitle: "Demo starting point until GPS is enabled", coordinate: CENTER, kind: "place" };
 function modeForPlace(place: Place): SheetMode {
-  return place.id === "bottleneck-gce" ? "traffic_details" : place.kind === "transport" ? "shuttle" : "place";
+  if (placeAnnouncement(place)) return "announcement";
+  return place.id === "bottleneck-gce" || place.id === "closure-persiaran-elmina" || place.kind === "hazard" ? "traffic_details" : place.kind === "transport" ? "shuttle" : "place";
 }
 
 export default function Explore() {
@@ -37,13 +43,41 @@ export default function Explore() {
   const [layer, setLayer] = useState<MapLayer>("all");
   const [layersOpen, setLayersOpen] = useState(false);
   const inset = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ place?: string; sheet?: string; arrived?: string; mode?: string; voice?: string; resume?: string; lng?: string; lat?: string; name?: string }>();
+  const params = useLocalSearchParams<{
+    place?: string;
+    sheet?: string;
+    arrived?: string;
+    mode?: string;
+    voice?: string;
+    resume?: string;
+    lng?: string;
+    lat?: string;
+    name?: string;
+    origin?: string;
+    destination?: string;
+    corridor?: string;
+    route?: string;
+  }>();
   const { data, update } = useStore();
+  const [mapZoom, setMapZoom] = useState(14.4);
+  const [facilitiesZoom, setFacilitiesZoom] = useState(14.4);
+  const [colocatedPlaces, setColocatedPlaces] = useState<Place[]>([]);
   const [mapHeight, setMapHeight] = useState(700);
   const [snapIndex, setSnapIndex] = useState(1);
+  const [shuttleReminderOpen, setShuttleReminderOpen] = useState(false);
+  const [managedReminderId, setManagedReminderId] = useState<string | null>(null);
+  const managedReminder = data.busReminders.find(r => r.id === managedReminderId && !r.dismissedAt && r.scheduledTime > Date.now());
+  const floatingReminder = activeBusReminder(data.busReminders, Date.now());
+  const sheetScroll = useRef<ScrollView>(null);
+  const changeShuttleReminder = (open: boolean) => {
+    setShuttleReminderOpen(open);
+    if (open) setSnapIndex(2);
+    sheetScroll.current?.scrollTo({ y: 0, animated: false });
+  };
   const [corridor, setCorridor] = useState(roadCorridors[0]);
   const [selected, setSelected] = useState<Place | null>(null);
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
+  useEffect(() => { setShuttleReminderOpen(false); }, [sheetMode, selected?.id]);
   const [center, setCenter] = useState<Coordinate>(CENTER);
   const [user, setUser] = useState<Coordinate>();
   const [cameraKey, setCameraKey] = useState(0);
@@ -79,7 +113,16 @@ export default function Explore() {
       router.setParams({ arrived: "" });
       setSheetMode(null); setSelected(null); return;
     }
-    const place = places.find((item) => item.id === params.place);
+    if (params.origin) {
+      const orig = places.find((p) => p.id === params.origin || p.name.toLowerCase().includes(params.origin!.toLowerCase()));
+      if (orig) { setOrigin(orig); setOriginText(orig.name); }
+    }
+    if (params.destination) {
+      const dest = places.find((p) => p.id === params.destination || p.name.toLowerCase().includes(params.destination!.toLowerCase()));
+      if (dest) { setDestination(dest); setDestinationText(dest.name); setSelected(dest); }
+    }
+    const rawPlace = announcementMapPlaces([...places, ...elminaBusStops]).find((item) => item.id === params.place);
+    const place = rawPlace ? canonicalShuttlePlace(rawPlace) : undefined;
     if (place) {
       setSelected(place); setCenter(place.coordinate); setSnapIndex(1);
       if (place.kind === "place") { setDestination(place); setDestinationText(place.name); }
@@ -87,28 +130,52 @@ export default function Explore() {
     if (params.sheet === "plan_journey") {
       setSheetMode("plan_journey"); setSnapIndex(1); setTravelMode("drive");
     } else if (params.sheet === "traffic_details") {
-      const road = places.find((item) => item.id === "bottleneck-gce")!;
-      setSelected(road); setCenter(road.coordinate); setCorridor(roadCorridors[0]); setSheetMode("traffic_details"); setSnapIndex(1);
+      const targetCorridor = roadCorridors.find(c => c.id === params.corridor) || (params.place === "closure-persiaran-elmina" ? roadCorridors.find(c => c.id === "persiaran-elmina") : roadCorridors[0]) || roadCorridors[0];
+      const targetPlaceId = params.place || (params.corridor === "persiaran-elmina" ? "closure-persiaran-elmina" : "bottleneck-gce");
+      const road = places.find((item) => item.id === targetPlaceId) || places.find((item) => item.id === "bottleneck-gce")!;
+      setSelected(road); setCenter(road.coordinate); setCorridor(targetCorridor); setSheetMode("traffic_details"); setSnapIndex(1);
     } else if (params.sheet === "shuttle") {
-      const stop = place?.kind === "transport" ? place : places.find((item) => item.id === "stop-1")!;
+      const stop = place?.kind === "transport" ? place : elminaBusStops[0];
       setSelected(stop); setCenter(stop.coordinate); setSheetMode("shuttle"); setSnapIndex(1);
     } else if (place) setSheetMode(modeForPlace(place));
-  }, [params.sheet, params.place, params.arrived, params.mode, params.resume, params.lng, params.lat, params.name, notify]);
+  }, [params.sheet, params.place, params.arrived, params.mode, params.resume, params.lng, params.lat, params.name, params.origin, params.destination, params.corridor, notify]);
 
-  const select = (place: Place) => {
+  const select = (target: Place) => {
+    setManagedReminderId(null);
+    const place = canonicalShuttlePlace(target);
     setSelected(place); setCenter(place.coordinate); setSnapIndex(1); setEditing(null); setLayersOpen(false); setSearchOpen(false); Keyboard.dismiss();
-    if (place.id === "bottleneck-gce") setCorridor(roadCorridors[0]);
+    if (place.id === "bottleneck-gce") setCorridor(roadCorridors.find(c => c.id === "gce") || roadCorridors[0]);
+    if (place.id === "closure-persiaran-elmina") setCorridor(roadCorridors.find(c => c.id === "persiaran-elmina") || roadCorridors[0]);
+    if (placeAnnouncement(place)) { setSheetMode("announcement"); return; }
     if (place.kind === "place") {
       setDestination(place); setDestinationText(place.name); setRouteId(undefined);
       if (!routing) setSheetMode("place");
     } else setSheetMode(modeForPlace(place));
   };
   const enterRouting = (place?: Place) => {
-    const target = place?.kind === "place" ? place : destination || defaultDestination;
+    let target = place?.kind === "place" ? place : destination || defaultDestination;
+    if (corridor.id === "persiaran-elmina" || selected?.id === "closure-persiaran-elmina") {
+      const elminaValley = places.find(p => p.id === "elmina-valley");
+      const elminaCityCentre = places.find(p => p.id === "elmina-city-centre");
+      if (elminaValley && elminaCityCentre) {
+        setOrigin(elminaValley);
+        setOriginText(elminaValley.name);
+        target = elminaCityCentre;
+      }
+    }
     setSearchOpen(false); setDestination(target); setDestinationText(target.name); setSelected(target);
     setSheetMode("plan_journey"); setSnapIndex(1); setEditing(null); setRouteId(undefined); setTravelMode("drive");
   };
+  const planAnnouncementRoute = () => {
+    if (!selected || !selectedAnnouncement) return;
+    const linkedPlace = places.find(place => place.id === selectedAnnouncement.placeId);
+    const target: Place = places.find(place => place.id === selectedAnnouncement.routeDestinationId) || { ...(linkedPlace || selected), id: `advisory-destination-${selectedAnnouncement.id}`, name: linkedPlace?.name || selectedAnnouncement.impactArea || selected.name, kind: "place", announcementId: undefined, announcementCategory: undefined, imageUrl: undefined };
+    const start = places.find(place => place.id === selectedAnnouncement.routeOriginId) || origin || currentLocation;
+    setOrigin(start); setOriginText(start.name); setDestination(target); setDestinationText(target.name); setSelected(target); setCenter(target.coordinate);
+    setSearchOpen(false); setSheetMode("plan_journey"); setSnapIndex(1); setEditing(null); setRouteId(undefined); setTravelMode("drive");
+  };
   const closeSheet = () => {
+    setManagedReminderId(null);
     setSelected(null); setSheetMode(null); setEditing(null);
     router.setParams({ place: "", sheet: "", arrived: "", mode: "", resume: "", lng: "", lat: "" });
   };
@@ -146,17 +213,20 @@ export default function Explore() {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       if (searchOpen) { setSearchOpen(false); Keyboard.dismiss(); return true; }
       if (activeJourney) { finishJourney(); return true; }
+      if (sheetMode === "shuttle" && shuttleReminderOpen) { setShuttleReminderOpen(false); sheetScroll.current?.scrollTo({ y: 0, animated: false }); return true; }
       if (sheetMode) { setSelected(null); setSheetMode(null); setEditing(null); return true; }
       return false;
     });
     return () => subscription.remove();
-  }, [searchOpen, activeJourney, sheetMode, finishJourney]);
+  }, [searchOpen, activeJourney, sheetMode, shuttleReminderOpen, finishJourney]);
   const journeyStep = activeJourney?.steps[journeyIndex];
+  const showShuttle = !activeJourney && !routing && (layer === "shuttle" || sheetMode === "shuttle");
   const markers = useMemo(() => {
     if (activeJourney) return [];
-    const visible = routing ? destination ? [destination] : [] : filterMapPlaces(places, layer);
+    const visible = routing ? destination ? [destination] : [] : filterMapPlaces(announcementMapPlaces(shuttleMapPlaces(places)), sheetMode === "shuttle" ? "shuttle" : layer, mapZoom);
+    if (showShuttle || (!routing && layer === "all")) visible.push(liveBusPlace);
     return selected && markerKind(selected) !== "traffic" && !visible.some((place) => place.id === selected.id) ? [...visible, selected] : visible;
-  }, [selected, destination, routing, layer, activeJourney]);
+  }, [selected, destination, routing, layer, sheetMode, showShuttle, activeJourney, mapZoom]);
   const routeOverlays = useMemo(() => {
     if (activeJourney) return [{ id: "active-journey", coordinates: activeJourney.coordinates, segments: (activeJourney as RouteOption).segments }];
     if (!routing) return undefined;
@@ -173,13 +243,23 @@ export default function Explore() {
     ...searchPlaces(editing === "origin" ? originText === "Current Location" ? "" : originText : destinationText === destination?.name ? "" : destinationText),
   ].slice(0, 5) : [];
   const placeEstimate = useMemo(() => selected?.kind === "place" ? demoRouteOptions(origin || currentLocation, selected, "drive")[0] : undefined, [origin, selected]);
+  const selectedAnnouncement = selected ? placeAnnouncement(selected) : undefined;
   const cameraSelected = selected?.kind === "camera";
-  const sheetTitle = routing
+  const sheetTitle = sheetMode === "colocated" ? `Colocated Facilities (${colocatedPlaces.length} items)` : routing
     ? `${travelMode === "drive" ? "Drive" : travelMode === "transit" ? "Transit" : "Walk"}${selectedOption ? ` · ${minutes(selectedOption.duration)} min` : ""}${destination ? ` · ${destination.name}` : ""}`
-    : sheetMode === "traffic_details" ? corridor.name : selected?.name || (sheetMode === "shuttle" ? "Elmina Shuttle S1" : "Selected location");
+    : sheetMode === "announcement" && selectedAnnouncement ? selectedAnnouncement.title : sheetMode === "shuttle" && managedReminder && !shuttleReminderOpen ? "Bus Reminder" : sheetMode === "shuttle" && shuttleReminderOpen ? "Bus Arrival Reminder" : sheetMode === "traffic_details" ? corridor.name : selected?.name || (sheetMode === "shuttle" ? "Elmina Shuttle S1" : "Selected location");
+
+  const openReminderManagement = (reminder: BusReminder) => {
+    const stop = elminaBusStops.find(item => item.id === reminder.stopId);
+    const feederPlace = places.find(item => item.id === (reminder.stopId === "t102-1" ? "elmina-green-1" : reminder.stopId === "t102-2" ? "atmosfera-stop" : "kwasa-hub"));
+    const target: Place = stop ?? { id: reminder.stopId, name: reminder.stopName, subtitle: "Feeder bus stop", kind: "transport", coordinate: feederPlace?.coordinate ?? CENTER };
+    setSelected(target); setCenter(target.coordinate); setSheetMode("shuttle"); setManagedReminderId(reminder.id); setShuttleReminderOpen(false); setSnapIndex(1); setLayersOpen(false);
+    sheetScroll.current?.scrollTo({ y: 0, animated: false });
+  };
 
   return <View onLayout={(event) => setMapHeight(event.nativeEvent.layout.height)} style={{ flex: 1, backgroundColor: colors.surfaceSecondary }}>
-    <TownshipMap markers={markers} selectedId={selected?.id} center={journeyStep?.coordinate || center} userCoordinate={journeyStep?.coordinate || user} pitch={activeJourney ? 50 : 0} bearing={journeyStep?.bearing || 0} following={Boolean(activeJourney)} cameraKey={cameraKey} traffic={!activeJourney && !routing && (layer === "all" || layer === "traffic")}
+    <TownshipMap markers={markers} onZoomChange={setMapZoom} clusterEnabled={layer === "all" && sheetMode !== "shuttle" && !routing} onClusterSelect={items => { setFacilitiesZoom(mapZoom); setColocatedPlaces(items); setSelected(null); setSheetMode("colocated"); setSnapIndex(1); setCenter(items[0].coordinate); sheetScroll.current?.scrollTo({ y: 0, animated: false }); }} selectedId={selected?.id} center={journeyStep?.coordinate || center} userCoordinate={journeyStep?.coordinate || user} pitch={activeJourney ? 50 : 0} bearing={journeyStep?.bearing || 0} following={Boolean(activeJourney)} cameraKey={cameraKey} traffic={!activeJourney && !routing && (layer === "all" || layer === "traffic")}
+      shuttleRoute={showShuttle ? shuttleRouteCoordinates : undefined} zoomLevel={selected?.id === liveBusLocation.id || selected?.id === "demo-shuttle-bus-t102" ? 16 : sheetMode === "colocated" ? facilitiesZoom : selected && !routing ? 16.5 : undefined}
       routeOptions={routeOverlays} selectedRouteId={activeJourney ? "active-journey" : selectedOption?.id} viewportPadding={viewportPadding}
       onRouteSelect={(id) => { if (!activeJourney) { setRouteId(id); setSnapIndex(1); } }} onSelect={select}
       onMapPress={() => { if (activeJourney) return; setSnapIndex(0); setEditing(null); setLayersOpen(false); Keyboard.dismiss(); }}
@@ -217,23 +297,29 @@ export default function Explore() {
           {!candidates.length && <Typography style={[ui.muted, { padding: 12 }]}>No matching demo places. Try “park”, “mall”, or “Kwasa”.</Typography>}
         </ScrollView>
       </Surface>}
-      <Surface style={{ alignSelf: "flex-start", marginHorizontal: 18, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "#FFFFFFF2" }}><DemoNote text={routing ? user ? "ROUTE ESTIMATES · NO LIVE TRAFFIC" : "DEMO STARTING POINT · ENABLE GPS WITH LOCATE" : "DEMO OVERLAYS · NOT LIVE TRAFFIC"} /></Surface>
+      <Surface style={{ alignSelf: "flex-start", marginHorizontal: 18, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "#FFFFFFF2" }}><DemoNote text={routing ? user ? "ROUTE ESTIMATES · NO LIVE TRAFFIC" : "DEMO STARTING POINT · ENABLE GPS WITH LOCATE" : showShuttle ? "DEMO BUS POSITION & TIMETABLE" : "DEMO OVERLAYS · NOT LIVE TRAFFIC"} /></Surface>
 
     </View>}
-    {!activeJourney && !searchOpen && <View style={{ position: "absolute", right: 18, bottom: sheetMode ? Math.min(sheetHeight + 12, Math.max(18, mapHeight - (routing ? 240 : 220))) : 22, zIndex: 2 }}><IconButton icon={LocateFixed} label="Show my location" onPress={() => { void locate(); }} /></View>}
-    {!activeJourney && !searchOpen && (selected || sheetMode) && <DraggableSheet availableHeight={availableHeight} expandedHeight={expandedHeight} index={snapIndex} onSnap={setSnapIndex} snapPoints={snapPoints} compactHandle={routing && snapIndex === 0}>
-      {!(routing && snapIndex === 0) && <View style={[ui.between, { marginBottom: 8, gap: 10 }]}>
+    {!activeJourney && !searchOpen && sheetMode && <View style={{ position: "absolute", right: 18, bottom: sheetMode ? Math.min(sheetHeight + 12, Math.max(18, mapHeight - (routing ? 240 : 220))) : 22, zIndex: 2 }}><IconButton icon={LocateFixed} label="Show my location" onPress={() => { void locate(); }} /></View>}
+    {!activeJourney && !searchOpen && <View pointerEvents={sheetMode ? "none" : "box-none"} accessibilityElementsHidden={Boolean(sheetMode)} importantForAccessibility={sheetMode ? "no-hide-descendants" : "auto"} style={{ position: "absolute", bottom: 12, left: 18, right: 18, flexDirection: "row", alignItems: "center", gap: 16, zIndex: 3 }}>
+      {floatingReminder ? <BusReminderPill reminder={floatingReminder} onPress={() => openReminderManagement(floatingReminder)} /> : <View pointerEvents="none" style={{ flex: 1 }} />}
+      <View style={{ flexShrink: 0 }}><IconButton icon={LocateFixed} label="Show my location" onPress={() => { void locate(); }} style={[ui.shadow, { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.white, borderWidth: 0 }]} /></View>
+    </View>}
+    <DraggableSheet visible={!activeJourney && !searchOpen && Boolean(selected || sheetMode)} availableHeight={availableHeight} expandedHeight={expandedHeight} index={snapIndex} onSnap={setSnapIndex} snapPoints={snapPoints} compactHandle={routing && snapIndex === 0}>
+      <View key="map-sheet-header" collapsable={false} collapsableChildren={false} style={[ui.between, { display: routing && snapIndex === 0 ? "none" : "flex", marginBottom: 8, gap: 10 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${sheetTitle}. ${snapIndex === 2 ? "Collapse" : "Expand"} details`} accessibilityState={{ expanded: snapIndex === 2 }} onPress={() => setSnapIndex(toggledSheetSnap(snapIndex))} style={{ flex: 1, minWidth: 0, minHeight: 36, justifyContent: "center" }}>
           <Typography numberOfLines={1} ellipsizeMode="tail" style={{ flex: 1, fontSize: 16, fontWeight: "600", fontFamily: fonts.semibold, color: colors.ink }}>{sheetTitle}</Typography>
         </Pressable>
-        <CloseButton accessibilityLabel="Close map details" onPress={closeSheet} />
-      </View>}
-      <ScrollView scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
-        {sheetMode === "traffic_details" ? snapIndex === 0 ? <View style={{ gap: 6 }}><Typography style={ui.heading}>{corridor.delay} min delay</Typography><DemoNote text="Simulated congestion · expand for traffic analysis" /></View> : <TrafficDetailsContent corridor={corridor} onPlanJourney={() => enterRouting()} onClose={closeSheet} />
+        <View collapsable={false} pointerEvents={sheetMode === "shuttle" && shuttleReminderOpen ? "none" : "auto"} accessibilityElementsHidden={sheetMode === "shuttle" && shuttleReminderOpen} importantForAccessibility={sheetMode === "shuttle" && shuttleReminderOpen ? "no-hide-descendants" : "auto"} style={{ opacity: sheetMode === "shuttle" && shuttleReminderOpen ? 0 : 1 }}><CloseButton accessibilityLabel="Close map details" onPress={closeSheet} /></View>
+      </View>
+      <ScrollView ref={sheetScroll} key="map-sheet-scroll" removeClippedSubviews={false} scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
+        {sheetMode === "colocated" ? <ColocatedFacilities places={colocatedPlaces} onSelect={select} />
+          : sheetMode === "announcement" && selectedAnnouncement ? <AnnouncementMapPreview announcement={selectedAnnouncement} compact={snapIndex === 0} onPlanRoute={planAnnouncementRoute} />
+          : sheetMode === "traffic_details" ? snapIndex === 0 ? <View style={{ gap: 6 }}><Typography style={ui.heading}>{corridor.delay} min delay</Typography><DemoNote text="Simulated congestion · expand for traffic analysis" /></View> : <TrafficDetailsContent corridor={corridor} onPlanJourney={() => enterRouting()} onClose={closeSheet} />
           : routing ? <PlanJourneyContent mode={travelMode} onModeChange={(mode) => { setTravelMode(mode); setRouteId(undefined); }} options={options} selectedId={selectedOption?.id} onSelect={setRouteId} onStart={startJourney} onExpand={() => setSnapIndex(2)} compact={snapIndex === 0} expanded={snapIndex === 2} destination={destination} stickyStart loading={loading} routeMessage={routeMessage} />
-          : sheetMode === "shuttle" ? <ShuttleContent compact={snapIndex === 0} stopName={selected?.name} onClose={closeSheet} onFocusBus={(route) => {
-            const coordinate: Coordinate = route === "S1" ? [101.51425, 3.17901] : [101.5099, 3.18133];
-            setSelected({ id: "demo-shuttle-bus", name: `Demo bus ${route}`, subtitle: "Simulated vehicle location", coordinate, kind: "transport" }); setCenter(coordinate); setSnapIndex(0); setCameraKey((key) => key + 1);
+          : sheetMode === "shuttle" ? <ShuttleContent initialRoute={params.route === "T102" ? "T102" : "S1"} managedReminder={managedReminder} onManageReminder={(id) => { setManagedReminderId(id); setSnapIndex(1); sheetScroll.current?.scrollTo({ y: 0, animated: false }); }} onReminderSaved={(id) => { if (managedReminderId) setManagedReminderId(id); else closeSheet(); }} reminderOpen={shuttleReminderOpen} onReminderOpenChange={changeShuttleReminder} compact={snapIndex === 0} stopName={selected?.name} stopId={selected?.id} onClose={closeSheet} onFocusBus={(route) => {
+            const bus: Place = route === "S1" ? liveBusPlace : { id: "demo-shuttle-bus-t102", name: "Demo feeder bus T102", subtitle: "Simulated vehicle location", coordinate: [101.5099, 3.18133], kind: "transport" };
+            setSelected(bus); setCenter(bus.coordinate); setSnapIndex(0); setCameraKey((key) => key + 1);
           }} />
           : cameraSelected ? <>
             {snapIndex > 0 && <Typography style={ui.muted}>{selected.subtitle}</Typography>}
@@ -250,8 +336,8 @@ export default function Explore() {
             <View style={[ui.row, { gap: 8 }]}><View style={{ flex: 1 }}><Action label="Directions / Plan Journey" onPress={() => enterRouting(selected)} /></View>{selected.id !== "dropped-pin" && <IconButton icon={Bookmark} label={data.saved.includes(selected.id) ? "Unsave place" : "Save place"} color={data.saved.includes(selected.id) ? colors.red : colors.ink} onPress={() => update((d) => ({ ...d, saved: toggleItem(d.saved, selected.id) }))} />}</View>
           </View> : null}
       </ScrollView>
-      {routing && snapIndex > 0 && selectedOption && <View style={{ paddingTop: 10, paddingBottom: Math.max(16, inset.bottom), borderTopWidth: 1, borderColor: colors.border }}><Action label="Start Navigation" disabled={selectedOption.coordinates.length < 2} onPress={() => startJourney(selectedOption)} /></View>}
-    </DraggableSheet>}
+      <View key="map-sheet-footer" collapsable={false} collapsableChildren={false} style={{ display: routing && snapIndex > 0 && selectedOption ? "flex" : "none", paddingTop: 10, paddingBottom: Math.max(16, inset.bottom), borderTopWidth: 1, borderColor: colors.border }}>{routing && snapIndex > 0 && selectedOption && <Action label="Start Navigation" disableAnimation disabled={selectedOption.coordinates.length < 2} onPress={() => startJourney(selectedOption)} />}</View>
+    </DraggableSheet>
     {searchOpen && <SearchOverlay query={searchText} onQueryChange={setSearchText} onClose={() => { setSearchOpen(false); Keyboard.dismiss(); router.setParams({ mode: "", voice: "" }); }} onSelect={(place) => { select(place); router.setParams({ mode: "", voice: "", place: "", sheet: "", arrived: "" }); }} />}
     {activeJourney && <JourneyOverlay journey={activeJourney} index={journeyIndex} onNext={() => setJourneyIndex((index) => Math.min(index + 1, activeJourney.steps.length - 1))} onExit={() => finishJourney()} />}
   </View>;
