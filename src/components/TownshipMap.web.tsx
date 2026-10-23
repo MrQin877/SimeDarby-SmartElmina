@@ -1,5 +1,8 @@
 import { createElement, useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { isAnnouncementMarker } from "../lib/map-layers";
+import { clusterAnnouncementMarkers } from "../lib/announcement-clusters";
+import AnnouncementClusterBadge from "./AnnouncementClusterBadge";
 import MapMarkerBadge from "./MapMarkerBadge";
 import { Map, Marker, setWorkerUrl, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -13,6 +16,7 @@ export default function TownshipMap(props: MapProps) {
   const map = useRef<Map | null>(null);
   const current = useRef(props);
   current.current = props;
+  const [viewZoom, setViewZoom] = useState(14.4);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -36,8 +40,10 @@ export default function TownshipMap(props: MapProps) {
     map.current = m;
     m.on("load", () => {
       setLoaded(true);
+      setViewZoom(Math.round(m.getZoom() * 4) / 4);
       setFailed(false);
     });
+    m.on("zoomend", () => setViewZoom(Math.round(m.getZoom() * 4) / 4));
     m.on("error", () => {
       if (!m.isStyleLoaded()) setFailed(true);
     });
@@ -95,18 +101,28 @@ export default function TownshipMap(props: MapProps) {
     const m = map.current;
     if (!loaded || !m) return;
     const roots: Root[] = [];
-    const markers = props.markers.map((p) => {
+    const clustered = clusterAnnouncementMarkers(props.markers, viewZoom);
+    const markers = clustered.places.map((p) => {
       const b = document.createElement("button");
       b.setAttribute("aria-label", p.name);
       const iconRoot = createRoot(b); roots.push(iconRoot);
       iconRoot.render(<MapMarkerBadge place={p} selected={props.selectedId === p.id} />);
-      const size = p.id === liveBusLocation.id ? 80 : 48;
+      const size = p.id === liveBusLocation.id ? 80 : isAnnouncementMarker(p) ? 64 : 48;
       b.style.cssText = `display:flex;align-items:center;justify-content:center;height:${size}px;width:${size}px;border:0;padding:0;background:transparent;cursor:pointer;overflow:visible`;
       b.onclick = (e) => {
         e.stopPropagation();
         current.current.onSelect?.(p);
       };
-      return new Marker({ element: b }).setLngLat(p.coordinate).addTo(m);
+      return new Marker({ element: b, anchor: isAnnouncementMarker(p) ? "bottom" : "center", offset: p.markerOffset }).setLngLat(p.coordinate).addTo(m);
+    });
+    clustered.clusters.forEach(cluster => {
+      const button = document.createElement("button");
+      button.setAttribute("aria-label", `${cluster.count} announcements. Zoom in to view`);
+      button.style.cssText = "display:flex;align-items:center;justify-content:center;height:64px;width:64px;border:0;padding:0;background:transparent;cursor:pointer;overflow:visible";
+      const root = createRoot(button); roots.push(root);
+      root.render(<AnnouncementClusterBadge count={cluster.count} selected={cluster.members.some(place => place.id === props.selectedId)} />);
+      button.onclick = event => { event.stopPropagation(); m.easeTo({ center: cluster.coordinate, zoom: cluster.expansionZoom, duration: 450 }); };
+      markers.push(new Marker({ element: button, anchor: "center" }).setLngLat(cluster.coordinate).addTo(m));
     });
     if (props.userCoordinate)
       markers.push(
@@ -118,7 +134,7 @@ export default function TownshipMap(props: MapProps) {
       markers.forEach((marker) => marker.remove());
       queueMicrotask(() => roots.forEach(root => root.unmount()));
     };
-  }, [loaded, props.markers, props.selectedId, props.userCoordinate]);
+  }, [loaded, props.markers, props.selectedId, props.userCoordinate, viewZoom]);
   useEffect(() => {
     const m = map.current;
     if (!loaded || !m) return;

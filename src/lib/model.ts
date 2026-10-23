@@ -228,3 +228,14 @@ export function restoreData(raw: string | null): LocalData {
     return initialData;
   }
 }
+
+/** Remove an authored post and all local references in one persisted update. */
+export function deleteDiscussionPost(data: LocalData, postId: string): LocalData {
+  return {
+    ...data,
+    discussions: data.discussions.filter(post => post.id !== postId),
+    saved: data.saved.filter(id => id !== postId),
+    liked: data.liked.filter(id => id !== postId),
+    comments: data.comments.filter(reply => reply.postId !== postId),
+  };
+}

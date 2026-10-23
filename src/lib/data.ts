@@ -14,14 +14,19 @@ export type Place = {
   address?: string;
   searchCategory?: string;
   searchStatus?: string;
+  announcementId?: string;
+  imageUrl?: string;
+  announcementCategory?: Announcement["category"];
+  announcementPriority?: Announcement["priority"];
+  markerOffset?: [number, number];
 };
 export const CENTER: Coordinate = [101.5118, 3.1796];
 // Fixtures are illustrative, including stop/camera placements. Never represent them as verified live observations.
 export const places: Place[] = [
   {
     id: "kwasa-hub",
-    name: "Kwasa Damansara Transit Hub",
-    subtitle: "MRT connection · Kwasa Damansara",
+    name: "Kwasa Sentral MRT Station",
+    subtitle: "MRT connection & transit terminal · Kwasa Hub",
     address: "Jalan Kwasa Sentral, Kwasa Damansara, Selangor · demo address",
     coordinate: [101.5791, 3.1769],
     kind: "place",
@@ -49,12 +54,30 @@ export const places: Place[] = [
   },
   {
     id: "bottleneck-gce",
-    name: "GCE Toll Interchange 3502",
-    subtitle: "Persiaran Atmosfera merge • Level 4 Saturation",
+    name: "Approach to Elmina Interchange",
+    subtitle: "Guthrie Corridor Expressway (GCE) · Heavy Traffic (7:45 AM)",
     coordinate: [101.5175, 3.1735],
     kind: "hazard",
     detail:
-      "Demo Junction A: Heavy congestion with 12-min delay. AI routing suggests taking Elmina West Bypass to save 9 minutes.",
+      "Guthrie Corridor Expressway (GCE) approach to Elmina Interchange is experiencing Heavy traffic (32 vehicles queued observed at 7:45 AM). 12-min delay reported. AI routing suggests taking Elmina West Bypass.",
+  },
+  {
+    id: "elmina-green-stop",
+    name: "Proposed Elmina Green Shuttle Stop",
+    subtitle: "Smart Elmina Community Shuttle · Route T102",
+    coordinate: [101.5035, 3.1970],
+    kind: "transport",
+    detail:
+      "Proposed community shuttle pickup for Elmina Green residents connecting to Elmina Lakeside Mall (10:20 AM) and Kwasa Sentral MRT Station (10:30 AM). Departure scheduled for 10:10 AM.",
+  },
+  {
+    id: "hazard-pothole",
+    name: "Pothole Near Elmina Central Park",
+    subtitle: "Damaged Road Surface · Reported 5:30 PM",
+    coordinate: [101.51425, 3.17901],
+    kind: "hazard",
+    detail:
+      "Damaged road surface near pedestrian crossing posing hazard to cyclists, pedestrians, and vehicles. Reported 23 October 2026 at 5:30 PM by Daniel. Maintenance inspection in progress.",
   },
   {
     id: "stop-1",
@@ -132,6 +155,10 @@ export const places: Place[] = [
   },
   {
     id: "closure-persiaran-elmina",
+    announcementId: "ann-01",
+    announcementCategory: "Roads",
+    announcementPriority: "high",
+    imageUrl: "road-closure.jpg",
     name: "Road Closure · Persiaran Elmina",
     subtitle: "Road Resurfacing & Maintenance · 7:00 AM – 11:00 AM",
     address: "Selected section of Persiaran Elmina approaching Elmina City Centre",
@@ -162,11 +189,15 @@ export function searchPlaces(query: string) {
 export type Announcement = {
   id: string;
   title: string;
-  category: "Roads" | "Maintenance" | "Community";
+  category: "Roads" | "Transport" | "Maintenance" | "Power" | "Community" | "Wellness" | "General";
   body: string;
   time: string;
   reactions: number;
   placeId?: string;
+  coordinate?: Coordinate;
+  active?: boolean;
+  routeOriginId?: string;
+  routeDestinationId?: string;
   icon: "road" | "tree" | "light";
   summary?: string;
   content?: string;
@@ -193,7 +224,9 @@ export const announcements: Announcement[] = [
     priority: "high",
     source: "Township Management",
     dateStr: "23 October 2026 · 7:00 AM – 11:00 AM",
-    imageUrl: "/road-closure.jpg",
+    imageUrl: "road-closure.jpg",
+    routeOriginId: "elmina-valley",
+    routeDestinationId: "elmina-city-centre",
     summary: "Temporary road closure along Persiaran Elmina approaching Elmina City Centre for road resurfacing and maintenance (7:00 AM – 11:00 AM).",
     content: "Township Management wishes to inform residents that road resurfacing and maintenance works will be carried out along a selected section of Persiaran Elmina approaching Elmina City Centre today, Friday, 23 October 2026, between 7:00 AM and 11:00 AM.\n\nTraffic management teams and auxiliary wardens are stationed to guide traffic flow. Commuters heading from Elmina Valley towards Elmina City Centre are advised to review alternative routes in the Journey Planner or use the Elmina West Bypass.",
     impactArea: "Selected section of Persiaran Elmina approaching Elmina City Centre",
@@ -204,7 +237,7 @@ export const announcements: Announcement[] = [
       "Plan extra 10–12 minutes buffer during morning commute.",
       "Feeder Bus S1 runs on dedicated priority bypass lanes."
     ],
-    actionText: "Open Journey Planner",
+    actionText: "Journey Planner",
     actionLink: "/(tabs)/explore?sheet=plan_journey&origin=elmina-valley&destination=elmina-city-centre",
   },
   {
@@ -668,7 +701,19 @@ export const roadCorridors: RoadCorridor[] = [
     tone: "red",
     advisory: "Selected section approaching Elmina City Centre is closed for resurfacing (7:00 AM – 11:00 AM). AI Journey Planner advises diverting via Elmina West Bypass or Persiaran Atmosfera."
   },
-  { id: "gce", name: "GCE Exit 3502", coordinate: [101.515847, 3.174127], speedLimit: 80, speed: 14, delay: 12, queue: 450, throughput: 78, status: "Heavy congestion", tone: "red", advisory: "Compare the Elmina West bypass before departing. Allow an extra 12 minutes in this simulation." },
+  {
+    id: "gce",
+    name: "Approach to Elmina Interchange",
+    coordinate: [101.515847, 3.174127],
+    speedLimit: 80,
+    speed: 14,
+    delay: 12,
+    queue: 450,
+    throughput: 32,
+    status: "Heavy",
+    tone: "red",
+    advisory: "Guthrie Corridor Expressway (GCE) approach to Elmina Interchange is experiencing Heavy traffic (32 vehicles queued observed at 7:45 AM). Allow an extra 12 minutes or divert via Elmina West Bypass."
+  },
   { id: "atmosfera", name: "Persiaran Atmosfera", coordinate: [101.512122, 3.173294], speedLimit: 60, speed: 38, delay: 6, queue: 180, throughput: 46, status: "Moderate congestion", tone: "amber", advisory: "Merging traffic is slowing this corridor. Compare route options and leave extra travel time." },
   { id: "central-park", name: "Central Park Boulevard", coordinate: [101.509225, 3.177905], speedLimit: 50, speed: 45, delay: 0, queue: 0, throughput: 18, status: "Smooth flow", tone: "green", advisory: "Park access is clear in this simulation. Follow the posted speed and give way at pedestrian crossings." },
 ];
@@ -676,7 +721,7 @@ export function resolveRoadCorridor(id?: string, name?: string, coordinate?: Coo
   const exact = roadCorridors.find((road) => road.id === id);
   if (exact) return { ...exact, coordinate: coordinate || exact.coordinate };
   const label = name?.toLowerCase() || "";
-  const matching = roadCorridors.find((road) => label.includes(road.name.toLowerCase()) || (road.id === "persiaran-elmina" && (label.includes("persiaran elmina") || label.includes("elmina city centre") || label.includes("resurfacing"))) || (road.id === "gce" && /gce|e35/.test(label)) || (road.id === "atmosfera" && label.includes("atmosfera")));
+  const matching = roadCorridors.find((road) => label.includes(road.name.toLowerCase()) || (road.id === "persiaran-elmina" && (label.includes("persiaran elmina") || label.includes("elmina city centre") || label.includes("resurfacing"))) || (road.id === "gce" && /gce|e35|interchange|approach/.test(label)) || (road.id === "atmosfera" && label.includes("atmosfera")));
   const nearest = coordinate ? [...roadCorridors].sort((a, b) => Math.hypot(a.coordinate[0] - coordinate[0], a.coordinate[1] - coordinate[1]) - Math.hypot(b.coordinate[0] - coordinate[0], b.coordinate[1] - coordinate[1]))[0] : roadCorridors[0];
   const road = matching || nearest;
   return { ...road, name: name || road.name, coordinate: coordinate || road.coordinate };

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   Map,
@@ -10,6 +10,9 @@ import {
   type MapRef,
   type StyleSpecification,
 } from "@maplibre/maplibre-react-native";
+import { isAnnouncementMarker } from "../lib/map-layers";
+import { clusterAnnouncementMarkers, type AnnouncementCluster } from "../lib/announcement-clusters";
+import AnnouncementClusterBadge from "./AnnouncementClusterBadge";
 import MapMarkerBadge from "./MapMarkerBadge";
 import { CENTER } from "../lib/data";
 import { lineFeature, mapStyle, trafficLines, roadLayerIds, routeBounds, type MapProps } from "../lib/map";
@@ -41,6 +44,13 @@ export default function TownshipMap({
   const camera = useRef<CameraRef>(null);
   const map = useRef<MapRef>(null);
   const interaction = useRef(0);
+  const [viewZoom, setViewZoom] = useState(14.4);
+  const clustered = useMemo(() => clusterAnnouncementMarkers(markers, viewZoom), [markers, viewZoom]);
+  const expandCluster = (cluster: AnnouncementCluster) => {
+    const target = camera.current;
+    if (!target) return;
+    void runCameraCommand(() => camera.current === target, () => target.easeTo({ center: cluster.coordinate, zoom: cluster.expansionZoom, duration: 450 }), error => console.warn("Cluster camera update failed", error));
+  };
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -71,6 +81,7 @@ export default function TownshipMap({
         attributionPosition={{ bottom: 8, left: 8 }}
         onDidFailLoadingMap={() => { setLoaded(false); setFailed(true); }}
         onDidFinishLoadingMap={() => { setLoaded(true); setFailed(false); }}
+        onRegionDidChange={event => { const zoom = event.nativeEvent.zoom; if (Number.isFinite(zoom)) setViewZoom(Math.round(zoom * 4) / 4); }}
         onPress={async (event) => {
           if ("features" in event.nativeEvent && event.nativeEvent.features?.length) return;
           const token = ++interaction.current;
@@ -131,19 +142,26 @@ export default function TownshipMap({
             />
           </GeoJSONSource>
         )}
-        {markers.map((place) => {
+        {clustered.clusters.map(cluster => <Marker key={cluster.id} id={cluster.id} lngLat={cluster.coordinate} onPress={event => { event.stopPropagation(); interaction.current++; expandCluster(cluster); }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${cluster.count} announcements. Zoom in to view`} onPress={event => { event.stopPropagation(); interaction.current++; expandCluster(cluster); }} style={{ width: 64, height: 64 }}>
+            <AnnouncementClusterBadge count={cluster.count} selected={cluster.members.some(place => place.id === selectedId)} />
+          </Pressable>
+        </Marker>)}
+        {clustered.places.map((place) => {
           const selected = selectedId === place.id;
           return (
             <Marker
               key={place.id}
               id={place.id}
               lngLat={place.coordinate}
+              anchor={isAnnouncementMarker(place) ? "bottom" : "center"}
+              offset={place.markerOffset}
               onPress={(event) => { event.stopPropagation(); interaction.current++; onSelect?.(place); }}
             >
               <Pressable
                 accessibilityLabel={place.name}
                 onPress={(event) => { event.stopPropagation(); interaction.current++; onSelect?.(place); }}
-                style={{ width: place.id === liveBusLocation.id ? 80 : 48, height: place.id === liveBusLocation.id ? 80 : 48, alignItems: "center", justifyContent: "center" }}
+                style={{ width: place.id === liveBusLocation.id ? 80 : isAnnouncementMarker(place) ? 64 : 48, height: place.id === liveBusLocation.id ? 80 : isAnnouncementMarker(place) ? 64 : 48, alignItems: "center", justifyContent: "center" }}
               >
                 <MapMarkerBadge place={place} selected={selected} />
               </Pressable>

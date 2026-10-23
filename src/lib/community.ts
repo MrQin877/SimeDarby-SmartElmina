@@ -1,9 +1,10 @@
 import { initialDiscussions, type Announcement } from "./data";
 import type { Comment, DiscussionPost } from "./model";
 
-export type DiscussionFilter = "all" | "saved" | "trending" | "transport" | "neighbourhood";
+export type DiscussionFilter = "all" | "my_posts" | "saved" | "trending" | "transport" | "neighbourhood";
 export const discussionFilters: { value: DiscussionFilter; label: string }[] = [
   { value: "all", label: "All Discussions" },
+  { value: "my_posts", label: "My Posts" },
   { value: "saved", label: "Saved Posts" },
   { value: "trending", label: "Trending" },
   { value: "transport", label: "Transportation" },
@@ -12,8 +13,12 @@ export const discussionFilters: { value: DiscussionFilter; label: string }[] = [
 export function mergeDiscussions(custom: DiscussionPost[]): DiscussionPost[] {
   return [...custom, ...initialDiscussions.filter((post) => !custom.some((item) => item.id === post.id))];
 }
-export function filterDiscussions(posts: DiscussionPost[], filter: DiscussionFilter, saved: string[]): DiscussionPost[] {
-  return posts.filter((post) => filter === "all" || (filter === "saved" ? saved.includes(post.id) : filter === "trending" ? post.trending : post.category === filter));
+/** Local post IDs retain authorship when the resident edits their profile name. */
+export function isOwnDiscussion(post: DiscussionPost, currentUserName?: string, ownPostIds: string[] = []): boolean {
+  return ownPostIds.includes(post.id) || Boolean(currentUserName?.trim() && post.authorName === currentUserName);
+}
+export function filterDiscussions(posts: DiscussionPost[], filter: DiscussionFilter, saved: string[], currentUserName?: string, ownPostIds: string[] = []): DiscussionPost[] {
+  return posts.filter((post) => filter === "all" || (filter === "my_posts" ? isOwnDiscussion(post, currentUserName, ownPostIds) : filter === "saved" ? saved.includes(post.id) : filter === "trending" ? post.trending : post.category === filter));
 }
 export function createDiscussionReply(postId: string, text: string, author: { fullName: string; precinct: string }, createdAt = new Date().toISOString()): Comment | null {
   const trimmed = text.trim();
@@ -45,7 +50,7 @@ export function filterAnnouncements(posts: Announcement[], filter: AnnouncementF
   return posts.filter((post) => filter === "all" || (filter === "roads" ? post.category === "Roads" : filter === "maintenance" ? post.category === "Maintenance" : /health|wellness|screening/i.test(`${post.title} ${post.body}`)));
 }
 export const discussionFilterPills: Record<DiscussionFilter, { short: string }> = {
-  all: { short: "All" }, saved: { short: "Saved" },
+  all: { short: "All" }, my_posts: { short: "My Posts" }, saved: { short: "Saved" },
   trending: { short: "Top" }, transport: { short: "Transit" },
   neighbourhood: { short: "Local" },
 };

@@ -37,7 +37,7 @@ test("the map pill leaves a 16px Locate gap, opens its stop's management view, a
     "../../components/ExploreSheetContext": { useExploreSheetVisibility: () => () => {} },
     "../../components/Common": new Proxy({}, { get: (_, key) => String(key) }),
     "../../components/MobilitySheets": { ShuttleContent: "ShuttleContent", PlanJourneyContent: "PlanJourneyContent", TrafficDetailsContent: "TrafficDetailsContent" },
-    ...Object.fromEntries(["BusReminderPill", "TownshipMap", "DraggableSheet", "MenuSheet", "JourneyOverlay", "SearchOverlay", "CameraFeed", "Action"].map(name => [`../../components/${name}`, { default: name }])),
+    ...Object.fromEntries(["AnnouncementMapPreview", "BusReminderPill", "TownshipMap", "DraggableSheet", "MenuSheet", "JourneyOverlay", "SearchOverlay", "CameraFeed", "Action"].map(name => [`../../components/${name}`, { default: name }])),
   };
   const exports: Record<string, any> = {};
   class Clock extends Date { static now() { return now; } }
@@ -57,6 +57,23 @@ test("the map pill leaves a 16px Locate gap, opens its stop's management view, a
   assert.equal(content.props.managedReminder.id, reminder.id);
   assert.equal(nodes(tree).find(n => n.type === "DraggableSheet")!.props.index, 1);
   nodes(tree).find(n => n.type === "CloseButton" && n.props.accessibilityLabel === "Close map details")!.props.onPress();
+  tree = render();
+  const closure = nodes(tree).find(n => n.type === "TownshipMap")!.props.markers.find((place: any) => place.announcementId === "ann-01");
+  assert.ok(closure);
+  nodes(tree).find(n => n.type === "TownshipMap")!.props.onSelect(closure);
+  let preview = nodes(render()).find(n => n.type === "AnnouncementMapPreview")!;
+  assert.equal(preview.props.announcement.id, "ann-01");
+  preview.props.onPlanRoute();
+  tree = render();
+  assert.equal(nodes(tree).find(n => n.type === "PlanJourneyContent")!.props.destination.id, "elmina-city-centre");
+  assert.equal(nodes(tree).find(n => n.props.accessibilityLabel === "Depart location")!.props.value, dataModule.places.find(place => place.id === "elmina-valley")!.name);
+  nodes(tree).find(n => n.type === "CloseButton" && n.props.accessibilityLabel === "Close map details")!.props.onPress();
+  tree = render();
+  const wellness = nodes(tree).find(n => n.type === "TownshipMap")!.props.markers.find((place: any) => place.announcementId === "ann-03");
+  nodes(tree).find(n => n.type === "TownshipMap")!.props.onSelect(wellness);
+  preview = nodes(render()).find(n => n.type === "AnnouncementMapPreview")!;
+  assert.equal(preview.props.announcement.id, "ann-03", "non-hazard notices also open the announcement sheet");
+  nodes(render()).find(n => n.type === "CloseButton" && n.props.accessibilityLabel === "Close map details")!.props.onPress();
   tree = render();
   nodes(tree).find(n => n.props.accessibilityLabel === "Search destination")!.props.onPress();
   assert.ok(!nodes(render()).some(n => n.type === "BusReminderPill"));

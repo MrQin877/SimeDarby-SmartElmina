@@ -8,6 +8,7 @@ import BoardingQrModal from "../../components/BoardingQrModal";
 import { useStore } from "../../state/store";
 import ResidentHeader from "../../components/ResidentHeader";
 import AnnouncementCard from "../../components/AnnouncementCard";
+import ScenarioShowcaseBar from "../../components/ScenarioShowcaseBar";
 import { announcements } from "../../lib/data";
 import { colors, fonts, ui } from "../../lib/theme";
 
@@ -30,6 +31,7 @@ export default function Home() {
       <PressableFeedback accessibilityLabel="Open Eco-Pass rewards" onPress={() => router.push("/rewards")} style={{ flex: 1, minWidth: 0, gap: 3 }}><Typography style={{ fontFamily: fonts.bold, fontSize: 9, lineHeight: 14, color: colors.white, backgroundColor: "#FFFFFF26", borderRadius: 8, alignSelf: "flex-start", paddingHorizontal: 6, paddingVertical: 2 }}>★ GOLD TIER</Typography><Typography style={{ fontFamily: fonts.bold, fontSize: 24, lineHeight: 32, color: colors.white }}>{data.rewardPoints} PTS</Typography><Typography style={{ color: colors.white, fontSize: 10, lineHeight: 15 }}>Feeder Bus & Temu Merchant Pass</Typography></PressableFeedback>
       <Button size="sm" onPress={() => setQrOpen(true)} style={{ borderRadius: 24, paddingHorizontal: 14, backgroundColor: colors.white }}><ScanLine size={16} color={colors.red} /><Button.Label style={{ fontSize: 12, color: colors.red }}>Pass QR</Button.Label></Button>
     </Surface>
+    <ScenarioShowcaseBar />
     <View style={{ gap: 10 }}>
       <Typography style={ui.label}>SMART MOBILITY</Typography>
       <View style={{ flexDirection: "row", gap: 10 }}>

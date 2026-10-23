@@ -1,7 +1,7 @@
 import type { Report } from "./model";
 
 export const demoReports: Report[] = [
-  { id: "demo-report-road", category: "Road & traffic", location: "Persiaran Atmosfera near TEMU", description: "Deep pothole along the left lane", status: "In progress", photos: [], createdAt: "2026-10-22T08:15:00+08:00" },
+  { id: "demo-report-road", category: "Road & traffic", location: "Near Elmina Central Park pedestrian crossing", description: "Deep pothole near Elmina Central Park pedestrian crossing: I noticed a pothole near the pedestrian crossing while walking around Elmina Central Park this evening. The damaged road surface may pose a hazard to cyclists, pedestrians and vehicles passing through the area.", status: "In progress", photos: [], createdAt: "2026-10-22T08:15:00+08:00" },
   { id: "demo-report-streetlight", category: "Streetlights", location: "Elmina Valley 3, Jalan Casuarina", description: "Flickering LED lamp post replaced", status: "Resolved", photos: [], createdAt: "2026-10-21T18:20:00+08:00" },
 ];
 

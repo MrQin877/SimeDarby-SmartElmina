@@ -26,7 +26,7 @@ export { default as TrafficDetailsContent } from "./RoadCorridorContent";
 
 export { default as PlanJourneyContent } from "./RoutingSheet";
 
-export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId, reminderOpen, onReminderOpenChange, managedReminder, onManageReminder, onReminderSaved }: {
+export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId, reminderOpen, onReminderOpenChange, managedReminder, onManageReminder, onReminderSaved, initialRoute = "S1" }: {
   onFocusBus: (route: string) => void;
   compact?: boolean;
   stopName?: string;
@@ -37,14 +37,15 @@ export function ShuttleContent({ onFocusBus, compact = false, stopName, stopId, 
   managedReminder?: BusReminder;
   onManageReminder: (id: string | null) => void;
   onReminderSaved: (id: string) => void;
+  initialRoute?: ShuttleRoute;
 }) {
   const { data, update } = useStore();
   const notify = useAppToast();
   const transitionStyle = useSheetContentTransition(reminderOpen);
   const [editingReminder, setEditingReminder] = useState<BusReminder>();
-  const [chosenRoute, setRoute] = useState<ShuttleRoute>("S1");
+  const [chosenRoute, setRoute] = useState<ShuttleRoute>(initialRoute);
   const [now, setNow] = useState(Date.now());
-  const [departures, setDepartures] = useState(() => followingDepartures("S1", Date.now()));
+  const [departures, setDepartures] = useState(() => followingDepartures(initialRoute, Date.now()));
   const [selectedDeparture, setSelectedDeparture] = useState(departures[0].id);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const chooseRoute = (next: string) => {

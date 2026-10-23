@@ -34,9 +34,9 @@ export function departureCountdown(at: number, now: number): string {
 // Proposed timetable offsets, not measured travel times or live arrival estimates.
 export const s1ArrivalOffsets = [0, 5, 11, 17, 28, 36, 45, 57, 63, 72];
 const feederStops = [
-  { id: "t102-1", name: "Elmina Green 1", subtitle: "Precinct pickup point", offset: 0 },
-  { id: "t102-2", name: "Persiaran Atmosfera", subtitle: "Covered boarding bay", offset: 6 },
-  { id: "t102-3", name: "Kwasa Damansara Transit Hub", subtitle: "MRT connection", offset: 18 },
+  { id: "t102-1", name: "Proposed Elmina Green 1 Shuttle Stop", subtitle: "Precinct pickup · Departure 10:10 AM", offset: 0 },
+  { id: "t102-2", name: "Elmina Lakeside Mall", subtitle: "Lakeside connection · Arrival 10:20 AM", offset: 10 },
+  { id: "t102-3", name: "Kwasa Sentral MRT Station", subtitle: "MRT connection · Terminal arrival 10:28 AM", offset: 18 },
 ];
 export function shuttleArrivals(route: ShuttleRoute, departure: number) {
   const stops = route === "S1" ? elminaBusStops.map((stop, index) => ({ ...stop, offset: s1ArrivalOffsets[index] })) : feederStops;
