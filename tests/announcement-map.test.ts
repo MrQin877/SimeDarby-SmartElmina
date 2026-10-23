@@ -5,7 +5,7 @@ import { URL } from "node:url";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { announcements, places, type Announcement } from "../src/lib/data";
-import { announcementMapPlaces, filterMapPlaces, placeAnnouncement } from "../src/lib/map-layers";
+import { announcementMapPlaces, filterMapPlaces, placeAnnouncement, isLiveBusMarker } from "../src/lib/map-layers";
 import { getAnnouncementImageSource } from "../src/lib/announcement-images";
 
 test("every linked advisory has a distinct marker with category and photo metadata", () => {
@@ -53,21 +53,21 @@ function load(path: string, deps: Record<string, any>) {
   return exports.default;
 }
 
-test("avatar pins render a 44px white frame, photo-error fallback, and category icons", () => {
+test("avatar pins render a 48px white frame, photo-error fallback, and category icons", () => {
   let cursor = 0;
   const state: any[] = [];
   const Marker = load("../src/components/MapMarkerBadge.tsx", {
     react: { useEffect() {}, useRef: (value: any) => ({ current: value }), useState(initial: any) { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], (value: any) => { state[i] = value; }]; } },
     "react-native": { View: "View", Text: "Text", Image: "Image", Animated: { Value: class { interpolate() { return 0; } }, View: "AnimatedView" } },
     "lucide-react-native": new Proxy({}, { get: (_, key) => String(key) }),
-    "../lib/map-layers": { markerKind: () => "hazard", placeAnnouncement },
+    "../lib/map-layers": { markerKind: () => "hazard", placeAnnouncement, isLiveBusMarker },
     "../lib/announcement-images": { getAnnouncementImageSource }, "../lib/shuttle-data": { SHUTTLE_BLUE: "blue", liveBusLocation: { id: "live-bus-s1" } },
     "../lib/theme": { colors: { white: "white", red: "red" }, fonts: {} },
   });
   const fixtures = announcementMapPlaces(places);
   const render = (id: string) => { cursor = 0; return Marker({ place: fixtures.find(p => p.announcementId === id), selected: true }); };
   let tree = render("ann-01");
-  assert.ok(nodes(tree).some(n => n.props.style?.width === 44 && n.props.style.borderWidth === 3 && n.props.style.borderColor === "white"));
+  assert.ok(nodes(tree).some(n => n.props.style?.width === 48 && n.props.style.borderWidth === 3 && n.props.style.borderColor === "white"));
   const photo = nodes(tree).find(n => n.type === "Image")!;
   assert.equal(photo.props.resizeMode, "cover");
   photo.props.onError();
@@ -92,4 +92,16 @@ test("announcement preview actions open the full advisory and the supplied route
   assert.equal(routes[0].params.id, "ann-01");
   nodes(tree).find(n => n.props.label === "Plan Detour / Route")!.props.onPress();
   assert.equal(planned, true);
+});
+
+test("All progressively reveals places while dedicated layers keep all their entries", () => {
+  const map = announcementMapPlaces(places);
+  const wide = filterMapPlaces(map, "all", 13);
+  assert.ok(wide.every(place => place.announcementId || place.kind === "hazard"));
+  assert.ok(!wide.some(place => place.kind === "camera" || place.kind === "transport"));
+  assert.ok(!wide.some(place => place.id === "park"));
+  assert.ok(filterMapPlaces(map, "all", 15).some(place => place.id === "park"));
+  assert.ok(!filterMapPlaces(map, "all", 15).some(place => place.kind === "camera"));
+  assert.ok(filterMapPlaces(map, "all", 16).some(place => place.kind === "camera"));
+  for (const layer of ["cctv", "shuttle", "traffic"] as const) assert.deepEqual(filterMapPlaces(map, layer, 9), filterMapPlaces(map, layer, 18));
 });

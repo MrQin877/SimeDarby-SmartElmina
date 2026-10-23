@@ -4,8 +4,17 @@ export const mapLayers: { value: MapLayer; label: string }[] = [
   { value: "all", label: "All" }, { value: "traffic", label: "Traffic" },
   { value: "shuttle", label: "Shuttle" }, { value: "cctv", label: "CCTV" },
 ];
-export function filterMapPlaces(places: Place[], layer: MapLayer): Place[] {
-  return places.filter((place) => markerKind(place) !== "traffic").filter((place) => layer === "all" || (layer === "traffic" ? place.kind === "hazard" || place.announcementCategory === "Roads" || place.announcementCategory === "Transport" : layer === "shuttle" ? place.kind === "transport" : place.kind === "camera"));
+export function isLiveBusMarker(place: Place): boolean {
+  return place.id === "live-bus-s1" || place.id === "demo-shuttle-bus-t102";
+}
+export function filterMapPlaces(places: Place[], layer: MapLayer, zoom = 16): Place[] {
+  const landmarks = new Set(["kwasa-hub", "park", "mall", "entrance", "temu-hub", "rainbow-bridge", "elmina-city-centre"]);
+  return places.filter(place => markerKind(place) !== "traffic").filter(place => {
+    if (layer !== "all") return layer === "traffic" ? place.kind === "hazard" || place.announcementCategory === "Roads" || place.announcementCategory === "Transport" : layer === "shuttle" ? place.kind === "transport" : place.kind === "camera";
+    if (zoom >= 16 || isAnnouncementMarker(place) || isLiveBusMarker(place)) return true;
+    if (place.kind === "hazard" && !/obstruction/i.test(`${place.id} ${place.name}`)) return true;
+    return zoom >= 14.5 && landmarks.has(place.id);
+  });
 }
 export function markerKind(place: Place): "camera" | "shuttle" | "hazard" | "traffic" | "place" {
   return place.id === "bottleneck-gce" || place.id.startsWith("corridor-") ? "traffic" : place.kind === "camera" ? "camera" : place.kind === "transport" ? "shuttle" : place.kind === "hazard" ? "hazard" : "place";

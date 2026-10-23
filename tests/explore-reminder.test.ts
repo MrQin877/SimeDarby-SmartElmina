@@ -37,7 +37,7 @@ test("the map pill leaves a 16px Locate gap, opens its stop's management view, a
     "../../components/ExploreSheetContext": { useExploreSheetVisibility: () => () => {} },
     "../../components/Common": new Proxy({}, { get: (_, key) => String(key) }),
     "../../components/MobilitySheets": { ShuttleContent: "ShuttleContent", PlanJourneyContent: "PlanJourneyContent", TrafficDetailsContent: "TrafficDetailsContent" },
-    ...Object.fromEntries(["AnnouncementMapPreview", "BusReminderPill", "TownshipMap", "DraggableSheet", "MenuSheet", "JourneyOverlay", "SearchOverlay", "CameraFeed", "Action"].map(name => [`../../components/${name}`, { default: name }])),
+    ...Object.fromEntries(["ColocatedFacilities", "AnnouncementMapPreview", "BusReminderPill", "TownshipMap", "DraggableSheet", "MenuSheet", "JourneyOverlay", "SearchOverlay", "CameraFeed", "Action"].map(name => [`../../components/${name}`, { default: name }])),
   };
   const exports: Record<string, any> = {};
   class Clock extends Date { static now() { return now; } }
@@ -48,6 +48,23 @@ test("the map pill leaves a 16px Locate gap, opens its stop's management view, a
   const bar = nodes(tree).find(n => n.props.style?.bottom === 12)!;
   assert.equal(bar.props.style.gap, 16);
   assert.equal(nodes(bar).filter(n => n.type === "IconButton" && n.props.label === "Show my location").length, 1);
+  let mapProps = nodes(tree).find(n => n.type === "TownshipMap")!.props;
+  assert.ok(!mapProps.markers.some((place: any) => place.kind === "camera"));
+  mapProps.onZoomChange(16.5);
+  tree = render();
+  mapProps = nodes(tree).find(n => n.type === "TownshipMap")!.props;
+  const camera = mapProps.markers.find((place: any) => place.kind === "camera");
+  const notice = mapProps.markers.find((place: any) => place.announcementId);
+  assert.ok(camera && notice);
+  mapProps.onClusterSelect([camera, notice]);
+  tree = render();
+  const facilities = nodes(tree).find(n => n.type === "ColocatedFacilities")!;
+  assert.equal(facilities.props.places.length, 2);
+  facilities.props.onSelect(camera);
+  tree = render();
+  assert.ok(nodes(tree).some(n => n.type === "CameraFeed" && n.props.cameraId === camera.id));
+  nodes(tree).find(n => n.type === "CloseButton" && n.props.accessibilityLabel === "Close map details")!.props.onPress();
+  tree = render();
   const pill = nodes(tree).find(n => n.type === "BusReminderPill")!;
   assert.equal(pill.props.reminder.id, reminder.id);
   pill.props.onPress();

@@ -11,7 +11,7 @@ import {
   type StyleSpecification,
 } from "@maplibre/maplibre-react-native";
 import { isAnnouncementMarker } from "../lib/map-layers";
-import { clusterAnnouncementMarkers, type AnnouncementCluster } from "../lib/announcement-clusters";
+import { clusterAnnouncementMarkers, clusterLabel, clusterOpensList, type AnnouncementCluster } from "../lib/announcement-clusters";
 import AnnouncementClusterBadge from "./AnnouncementClusterBadge";
 import MapMarkerBadge from "./MapMarkerBadge";
 import { CENTER } from "../lib/data";
@@ -22,6 +22,9 @@ import { colors } from "../lib/theme";
 export default function TownshipMap({
   markers,
   onSelect,
+  onZoomChange,
+  onClusterSelect,
+  clusterEnabled = true,
   onMapPress,
   onMapLongPress,
   onTrafficPress,
@@ -45,8 +48,9 @@ export default function TownshipMap({
   const map = useRef<MapRef>(null);
   const interaction = useRef(0);
   const [viewZoom, setViewZoom] = useState(14.4);
-  const clustered = useMemo(() => clusterAnnouncementMarkers(markers, viewZoom), [markers, viewZoom]);
+  const clustered = useMemo(() => clusterAnnouncementMarkers(markers, viewZoom, selectedId, clusterEnabled), [markers, viewZoom, selectedId, clusterEnabled]);
   const expandCluster = (cluster: AnnouncementCluster) => {
+    if (clusterOpensList(cluster, viewZoom) && onClusterSelect) { onClusterSelect(cluster.members); return; }
     const target = camera.current;
     if (!target) return;
     void runCameraCommand(() => camera.current === target, () => target.easeTo({ center: cluster.coordinate, zoom: cluster.expansionZoom, duration: 450 }), error => console.warn("Cluster camera update failed", error));
@@ -81,7 +85,7 @@ export default function TownshipMap({
         attributionPosition={{ bottom: 8, left: 8 }}
         onDidFailLoadingMap={() => { setLoaded(false); setFailed(true); }}
         onDidFinishLoadingMap={() => { setLoaded(true); setFailed(false); }}
-        onRegionDidChange={event => { const zoom = event.nativeEvent.zoom; if (Number.isFinite(zoom)) setViewZoom(Math.round(zoom * 4) / 4); }}
+        onRegionDidChange={event => { const zoom = event.nativeEvent.zoom; if (Number.isFinite(zoom)) { const next = Math.round(zoom * 100) / 100; setViewZoom(next); onZoomChange?.(next); } }}
         onPress={async (event) => {
           if ("features" in event.nativeEvent && event.nativeEvent.features?.length) return;
           const token = ++interaction.current;
@@ -142,8 +146,8 @@ export default function TownshipMap({
             />
           </GeoJSONSource>
         )}
-        {clustered.clusters.map(cluster => <Marker key={cluster.id} id={cluster.id} lngLat={cluster.coordinate} onPress={event => { event.stopPropagation(); interaction.current++; expandCluster(cluster); }}>
-          <Pressable accessibilityRole="button" accessibilityLabel={`${cluster.count} announcements. Zoom in to view`} onPress={event => { event.stopPropagation(); interaction.current++; expandCluster(cluster); }} style={{ width: 64, height: 64 }}>
+        {clustered.clusters.map(cluster => <Marker key={cluster.id} id={cluster.id} lngLat={cluster.coordinate} offset={cluster.markerOffset} onPress={event => { event.stopPropagation(); interaction.current++; expandCluster(cluster); }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={clusterLabel(cluster)} onPress={event => { event.stopPropagation(); interaction.current++; expandCluster(cluster); }} style={{ width: 48, height: 48 }}>
             <AnnouncementClusterBadge count={cluster.count} selected={cluster.members.some(place => place.id === selectedId)} />
           </Pressable>
         </Marker>)}
@@ -156,6 +160,8 @@ export default function TownshipMap({
               lngLat={place.coordinate}
               anchor={isAnnouncementMarker(place) ? "bottom" : "center"}
               offset={place.markerOffset}
+              selected={selected}
+              style={{ zIndex: selected ? 999 : isAnnouncementMarker(place) ? 30 : 10 }}
               onPress={(event) => { event.stopPropagation(); interaction.current++; onSelect?.(place); }}
             >
               <Pressable

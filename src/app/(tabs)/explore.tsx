@@ -6,6 +6,7 @@ import * as Location from "expo-location";
 import { Search, Mic, LocateFixed, Bookmark, MapPin, ArrowDownUp, Layers, Car, BusFront, Video, Check } from "lucide-react-native";
 import { CENTER, places, searchPlaces, roadCorridors, resolveRoadCorridor, type Coordinate, type Place } from "../../lib/data";
 import { canonicalShuttlePlace, elminaBusStops, liveBusLocation, liveBusPlace, shuttleMapPlaces, shuttleRouteCoordinates } from "../../lib/shuttle-data";
+import ColocatedFacilities from "../../components/ColocatedFacilities";
 import AnnouncementMapPreview from "../../components/AnnouncementMapPreview";
 import BusReminderPill from "../../components/BusReminderPill";
 import { activeBusReminder, type BusReminder } from "../../lib/bus-reminders";
@@ -29,7 +30,7 @@ import { filterMapPlaces, markerKind, mapLayers, announcementMapPlaces, placeAnn
 import { useExploreSheetVisibility } from "../../components/ExploreSheetContext";
 import { sheetSnapPoints, routingSnapPoints, toggledSheetSnap } from "../../lib/sheet";
 
-type SheetMode = "place" | "traffic_details" | "plan_journey" | "shuttle" | "announcement";
+type SheetMode = "place" | "traffic_details" | "plan_journey" | "shuttle" | "announcement" | "colocated";
 const defaultDestination = places.find((place) => place.id === "kwasa-hub")!;
 const currentLocation: Place = { id: "current-location", name: "Current Location", subtitle: "Demo starting point until GPS is enabled", coordinate: CENTER, kind: "place" };
 function modeForPlace(place: Place): SheetMode {
@@ -58,6 +59,9 @@ export default function Explore() {
     route?: string;
   }>();
   const { data, update } = useStore();
+  const [mapZoom, setMapZoom] = useState(14.4);
+  const [facilitiesZoom, setFacilitiesZoom] = useState(14.4);
+  const [colocatedPlaces, setColocatedPlaces] = useState<Place[]>([]);
   const [mapHeight, setMapHeight] = useState(700);
   const [snapIndex, setSnapIndex] = useState(1);
   const [shuttleReminderOpen, setShuttleReminderOpen] = useState(false);
@@ -219,10 +223,10 @@ export default function Explore() {
   const showShuttle = !activeJourney && !routing && (layer === "shuttle" || sheetMode === "shuttle");
   const markers = useMemo(() => {
     if (activeJourney) return [];
-    const visible = routing ? destination ? [destination] : [] : filterMapPlaces(announcementMapPlaces(shuttleMapPlaces(places)), sheetMode === "shuttle" ? "shuttle" : layer);
-    if (showShuttle) visible.push(liveBusPlace);
+    const visible = routing ? destination ? [destination] : [] : filterMapPlaces(announcementMapPlaces(shuttleMapPlaces(places)), sheetMode === "shuttle" ? "shuttle" : layer, mapZoom);
+    if (showShuttle || (!routing && layer === "all")) visible.push(liveBusPlace);
     return selected && markerKind(selected) !== "traffic" && !visible.some((place) => place.id === selected.id) ? [...visible, selected] : visible;
-  }, [selected, destination, routing, layer, sheetMode, showShuttle, activeJourney]);
+  }, [selected, destination, routing, layer, sheetMode, showShuttle, activeJourney, mapZoom]);
   const routeOverlays = useMemo(() => {
     if (activeJourney) return [{ id: "active-journey", coordinates: activeJourney.coordinates, segments: (activeJourney as RouteOption).segments }];
     if (!routing) return undefined;
@@ -241,7 +245,7 @@ export default function Explore() {
   const placeEstimate = useMemo(() => selected?.kind === "place" ? demoRouteOptions(origin || currentLocation, selected, "drive")[0] : undefined, [origin, selected]);
   const selectedAnnouncement = selected ? placeAnnouncement(selected) : undefined;
   const cameraSelected = selected?.kind === "camera";
-  const sheetTitle = routing
+  const sheetTitle = sheetMode === "colocated" ? `Colocated Facilities (${colocatedPlaces.length} items)` : routing
     ? `${travelMode === "drive" ? "Drive" : travelMode === "transit" ? "Transit" : "Walk"}${selectedOption ? ` · ${minutes(selectedOption.duration)} min` : ""}${destination ? ` · ${destination.name}` : ""}`
     : sheetMode === "announcement" && selectedAnnouncement ? selectedAnnouncement.title : sheetMode === "shuttle" && managedReminder && !shuttleReminderOpen ? "Bus Reminder" : sheetMode === "shuttle" && shuttleReminderOpen ? "Bus Arrival Reminder" : sheetMode === "traffic_details" ? corridor.name : selected?.name || (sheetMode === "shuttle" ? "Elmina Shuttle S1" : "Selected location");
 
@@ -254,8 +258,8 @@ export default function Explore() {
   };
 
   return <View onLayout={(event) => setMapHeight(event.nativeEvent.layout.height)} style={{ flex: 1, backgroundColor: colors.surfaceSecondary }}>
-    <TownshipMap markers={markers} selectedId={selected?.id} center={journeyStep?.coordinate || center} userCoordinate={journeyStep?.coordinate || user} pitch={activeJourney ? 50 : 0} bearing={journeyStep?.bearing || 0} following={Boolean(activeJourney)} cameraKey={cameraKey} traffic={!activeJourney && !routing && (layer === "all" || layer === "traffic")}
-      shuttleRoute={showShuttle ? shuttleRouteCoordinates : undefined} zoomLevel={selected?.id === liveBusLocation.id || selected?.id === "demo-shuttle-bus-t102" ? 16 : undefined}
+    <TownshipMap markers={markers} onZoomChange={setMapZoom} clusterEnabled={layer === "all" && sheetMode !== "shuttle" && !routing} onClusterSelect={items => { setFacilitiesZoom(mapZoom); setColocatedPlaces(items); setSelected(null); setSheetMode("colocated"); setSnapIndex(1); setCenter(items[0].coordinate); sheetScroll.current?.scrollTo({ y: 0, animated: false }); }} selectedId={selected?.id} center={journeyStep?.coordinate || center} userCoordinate={journeyStep?.coordinate || user} pitch={activeJourney ? 50 : 0} bearing={journeyStep?.bearing || 0} following={Boolean(activeJourney)} cameraKey={cameraKey} traffic={!activeJourney && !routing && (layer === "all" || layer === "traffic")}
+      shuttleRoute={showShuttle ? shuttleRouteCoordinates : undefined} zoomLevel={selected?.id === liveBusLocation.id || selected?.id === "demo-shuttle-bus-t102" ? 16 : sheetMode === "colocated" ? facilitiesZoom : selected && !routing ? 16.5 : undefined}
       routeOptions={routeOverlays} selectedRouteId={activeJourney ? "active-journey" : selectedOption?.id} viewportPadding={viewportPadding}
       onRouteSelect={(id) => { if (!activeJourney) { setRouteId(id); setSnapIndex(1); } }} onSelect={select}
       onMapPress={() => { if (activeJourney) return; setSnapIndex(0); setEditing(null); setLayersOpen(false); Keyboard.dismiss(); }}
@@ -309,7 +313,8 @@ export default function Explore() {
         <View collapsable={false} pointerEvents={sheetMode === "shuttle" && shuttleReminderOpen ? "none" : "auto"} accessibilityElementsHidden={sheetMode === "shuttle" && shuttleReminderOpen} importantForAccessibility={sheetMode === "shuttle" && shuttleReminderOpen ? "no-hide-descendants" : "auto"} style={{ opacity: sheetMode === "shuttle" && shuttleReminderOpen ? 0 : 1 }}><CloseButton accessibilityLabel="Close map details" onPress={closeSheet} /></View>
       </View>
       <ScrollView ref={sheetScroll} key="map-sheet-scroll" removeClippedSubviews={false} scrollEnabled={snapIndex === 2} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: routing && snapIndex === 0 ? 0 : Math.max(22, inset.bottom + 16) }}>
-        {sheetMode === "announcement" && selectedAnnouncement ? <AnnouncementMapPreview announcement={selectedAnnouncement} compact={snapIndex === 0} onPlanRoute={planAnnouncementRoute} />
+        {sheetMode === "colocated" ? <ColocatedFacilities places={colocatedPlaces} onSelect={select} />
+          : sheetMode === "announcement" && selectedAnnouncement ? <AnnouncementMapPreview announcement={selectedAnnouncement} compact={snapIndex === 0} onPlanRoute={planAnnouncementRoute} />
           : sheetMode === "traffic_details" ? snapIndex === 0 ? <View style={{ gap: 6 }}><Typography style={ui.heading}>{corridor.delay} min delay</Typography><DemoNote text="Simulated congestion · expand for traffic analysis" /></View> : <TrafficDetailsContent corridor={corridor} onPlanJourney={() => enterRouting()} onClose={closeSheet} />
           : routing ? <PlanJourneyContent mode={travelMode} onModeChange={(mode) => { setTravelMode(mode); setRouteId(undefined); }} options={options} selectedId={selectedOption?.id} onSelect={setRouteId} onStart={startJourney} onExpand={() => setSnapIndex(2)} compact={snapIndex === 0} expanded={snapIndex === 2} destination={destination} stickyStart loading={loading} routeMessage={routeMessage} />
           : sheetMode === "shuttle" ? <ShuttleContent initialRoute={params.route === "T102" ? "T102" : "S1"} managedReminder={managedReminder} onManageReminder={(id) => { setManagedReminderId(id); setSnapIndex(1); sheetScroll.current?.scrollTo({ y: 0, animated: false }); }} onReminderSaved={(id) => { if (managedReminderId) setManagedReminderId(id); else closeSheet(); }} reminderOpen={shuttleReminderOpen} onReminderOpenChange={changeShuttleReminder} compact={snapIndex === 0} stopName={selected?.name} stopId={selected?.id} onClose={closeSheet} onFocusBus={(route) => {

@@ -2,10 +2,10 @@ import { Text, View } from "react-native";
 import { colors, fonts } from "../lib/theme";
 
 export default function AnnouncementClusterBadge({ count, selected = false }: { count: number; selected?: boolean }) {
-  return <View pointerEvents="none" style={{ width: 64, height: 64, alignItems: "center", justifyContent: "center" }}>
-    <View style={{ position: "absolute", width: 60, height: 60, borderRadius: 30, backgroundColor: colors.redSoft }} />
-    <View style={{ width: 46, height: 46, borderRadius: 23, borderWidth: 2, borderColor: colors.red, backgroundColor: selected ? colors.red : colors.white, alignItems: "center", justifyContent: "center", shadowColor: colors.ink, shadowOpacity: 0.16, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
-      <Text style={{ fontFamily: fonts.semibold, fontSize: count > 99 ? 14 : 18, color: selected ? colors.white : colors.red }}>{count}</Text>
+  return <View pointerEvents="none" style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
+    {selected && <View style={{ position: "absolute", width: 46, height: 46, borderRadius: 23, borderWidth: 2, borderColor: colors.ink }} />}
+    <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2.5, borderColor: colors.white, backgroundColor: colors.red, alignItems: "center", justifyContent: "center", shadowColor: "#09090B", shadowOpacity: 0.16, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}>
+      <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.white }}>{count}</Text>
     </View>
   </View>;
 }

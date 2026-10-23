@@ -6,6 +6,9 @@ import baseStyle from "../../assets/map-style.json";
 export const mapStyle = process.env.EXPO_PUBLIC_MAP_STYLE_URL || baseStyle;
 export type MapProps = {
   markers: Place[];
+  onZoomChange?: (zoom: number) => void;
+  onClusterSelect?: (places: Place[]) => void;
+  clusterEnabled?: boolean;
   onSelect?: (place: Place) => void;
   onMapPress?: (coordinate: Coordinate) => void;
   onMapLongPress?: (coordinate: Coordinate) => void;
